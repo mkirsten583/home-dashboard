@@ -1,2 +1,0 @@
-<!DOCTYPE html>
-<html><body><h1>Dashboard coming soon</h1></body></html>
