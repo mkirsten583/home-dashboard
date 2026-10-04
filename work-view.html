@@ -101,7 +101,11 @@ const CONFIG = {
   viewSeconds: 10,
   timeZone: "Australia/Brisbane"
 };
-const MSAL_URL = "https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js";
+const MSAL_URLS = [
+  "https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js",
+  "https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"
+];
+let authError = null;
 
 const params = new URLSearchParams(location.search);
 const DEMO = params.has("demo");                       // ?demo  -> built-in sample data
@@ -123,11 +127,6 @@ const DEMO_DATA = {
     { unit: "CHPP", panel: null, actual: 1120, plan: 1815, variance: -695, status: "Behind", hasData: true },
     { unit: "UNIT 5", panel: null, actual: 0, plan: 0, variance: 0, status: null, hasData: false }
   ],
-  devMetres: {
-    thisShift: { actual: 18.4, plan: 24, variance: -5.6 },
-    today:     { actual: 36.8, plan: 48, variance: -11.2 },
-    month:     { actual: 412.6, plan: 396, variance: 16.6 }
-  },
   generatedAt: "2026-10-03T09:08:00Z", sourceFile: "(demo data)"
 };
 
@@ -189,21 +188,9 @@ function renderUnits(d) {
     '<th>Variance</th><th class="l">Status</th></tr></thead><tbody>' + body + "</tbody></table>";
 }
 
-function renderMetres(d) {
-  if (!d.devMetres) {
-    return notice("No metres data yet",
-      "<p>work_data.json has no <b>devMetres</b> block. Add this to the file written by the flow and this view will fill in:</p>" +
-      "<pre>\"devMetres\": {\n  \"thisShift\": { \"actual\": 0, \"plan\": 0, \"variance\": 0 },\n" +
-      "  \"today\":     { \"actual\": 0, \"plan\": 0, \"variance\": 0 },\n" +
-      "  \"month\":     { \"actual\": 0, \"plan\": 0, \"variance\": 0 }\n}</pre>");
-  }
-  return periodTable(d.devMetres, " m", 1);
-}
-
 const VIEWS = [
   { title: "ROM Tonnes", render: renderRom },
-  { title: "Tonnes by Production Unit", render: renderUnits },
-  { title: "Development Metres", render: renderMetres }
+  { title: "Tonnes by Production Unit", render: renderUnits }
 ];
 
 /* ============================ DATA / AUTH ============================ */
@@ -217,17 +204,33 @@ function loadScript(src) {
     document.head.appendChild(s);
   });
 }
+function resolveClientId() {   // file setting first, then ?client=..., then the value remembered in this browser
+  const q = params.get("client");
+  try { if (q) localStorage.setItem("workDashClientId", q); } catch (e) {}
+  if (CONFIG.clientId && !/^PASTE/.test(CONFIG.clientId)) return CONFIG.clientId;
+  if (q) return q;
+  try { return localStorage.getItem("workDashClientId") || ""; } catch (e) { return ""; }
+}
 async function initAuth() {
-  await loadScript(MSAL_URL);
+  const cid = resolveClientId();
+  if (!cid) { const e = new Error("Client ID not set"); e.code = "clientid"; throw e; }
+  if (!window.msal) {
+    let last = null;
+    for (const u of MSAL_URLS) {
+      try { await loadScript(u); if (window.msal) break; } catch (e) { last = e; }
+    }
+    if (!window.msal) throw new Error("the Microsoft sign-in library could not be downloaded (" +
+      (last ? last.message : "blocked") + ") - the network or a firewall may be blocking it");
+  }
   msalApp = new msal.PublicClientApplication({
-    auth: { clientId: CONFIG.clientId, authority: CONFIG.authority,
+    auth: { clientId: cid, authority: CONFIG.authority,
             redirectUri: location.origin + location.pathname },
     cache: { cacheLocation: "localStorage" }
   });
   if (msalApp.initialize) await msalApp.initialize();
 }
 async function getToken(interactive) {
-  if (!msalApp) throw new Error("Microsoft sign-in is not loaded - check the internet connection");
+  if (!msalApp) throw authError || new Error("Microsoft sign-in is not set up");
   const scopes = ["Files.Read"];
   const acct = msalApp.getAllAccounts()[0];
   const needSignIn = () => { const e = new Error("Sign-in needed"); e.code = "signin"; return e; };
@@ -278,6 +281,13 @@ const stage = $("stage");
 
 function errorPanel() {
   const e = lastError || new Error("No data yet");
+  if (e.code === "clientid") {
+    return notice("Enter the app client ID",
+      "<p>Paste the Application (client) ID of the Azure app registration. It is remembered in this browser, so replacing this file will not clear it.</p>" +
+      '<p><input id="cid" type="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" ' +
+      'style="width:min(90%,' + "40em" + ');font:inherit;padding:.5em .7em;border-radius:.4em;border:1px solid #3a4651;background:#12161b;color:#e8edf2"></p>' +
+      '<button class="act" data-saveid>Save and load</button>');
+  }
   if (e.code === "signin") {
     return notice("Sign in to load shift data",
       '<p>Tap to sign in with your work account.</p><button class="act" data-signin>Sign in</button>');
@@ -335,6 +345,7 @@ function schedule() {
   timer = setTimeout(advance, CONFIG.viewSeconds * 1000);
 }
 async function advance() {          // every CONFIG.viewSeconds: re-read the file, then show the next view
+  if (lastError && lastError.code === "clientid") { schedule(); return; }   // leave the entry box alone while typing
   idx = (idx + 1) % VIEWS.length;
   await refresh();
   render();
@@ -350,13 +361,19 @@ async function signIn() {
 $("dots").addEventListener("click", e => {
   const b = e.target.closest(".dot"); if (b) jump(Number(b.dataset.i));
 });
-stage.addEventListener("click", e => { if (e.target.closest("[data-signin]")) signIn(); });
+stage.addEventListener("click", e => {
+  if (e.target.closest("[data-signin]")) signIn();
+  if (e.target.closest("[data-saveid]")) {
+    const v = ($("cid") || {}).value;
+    if (v && v.trim()) { try { localStorage.setItem("workDashClientId", v.trim()); } catch (x) {} location.reload(); }
+  }
+});
 window.addEventListener("resize", fitTables);
 
 (async function start() {
   if (!DEMO && !CONFIG.dataUrl) {
     try { await initAuth(); }
-    catch (e) { lastError = new Error("Microsoft sign-in could not load (" + e.message + ")"); }
+    catch (e) { authError = e.code === "clientid" ? e : new Error("Sign-in setup failed: " + e.message); }
   }
   await refresh();
   render();
