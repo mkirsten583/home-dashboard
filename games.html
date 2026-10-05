@@ -1,0 +1,1411 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Games</title>
+<style>
+:root{
+  --bg:#12161b; --panel:#1a2027; --raised:#222b34; --line:#2b343d;
+  --txt:#e8edf2; --dim:#9fb0c0; --faint:#6b7885; --acc:#5aa9e6; --warn:#f2c14e; --good:#4cc38a; --bad:#ef6b6b;
+  --cw:72px;
+  --light:#e3d3b4; --dark:#a47c58;
+  --sel:rgba(90,169,230,.75); --last:rgba(242,193,78,.38); --hint:rgba(47,181,100,.55); --check:rgba(235,80,80,.7);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#app{height:100%;display:flex;flex-direction:column}
+header{flex:none;height:56px;display:flex;align-items:center;gap:12px;padding:0 12px 0 130px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;white-space:nowrap}
+header::-webkit-scrollbar{display:none}
+header h1{margin:0;font-size:19px;font-weight:600;flex:none}
+#tabs{display:flex;gap:8px}
+button{font:inherit;font-size:15px;color:var(--txt);background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:0 14px;min-height:46px;cursor:pointer;flex:1;touch-action:manipulation}
+button:active{transform:scale(.97)}
+button.on{border-color:var(--acc);background:#233447}
+button:disabled{opacity:.4;pointer-events:none}
+.tab{flex:none;min-height:38px;padding:0 15px;border-radius:99px;font-size:14px;color:var(--dim)}
+.tab.on{color:var(--txt)}
+.game{flex:1;min-height:0;display:flex;gap:20px;padding:14px 18px;align-items:center;justify-content:center;position:relative}
+aside{flex:none;width:290px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px}
+.big{font-size:18px;font-weight:600}
+.sub{color:var(--dim);font-size:13px;margin-top:2px;min-height:18px}
+.stat{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--dim)}
+.stat b{font-size:22px;color:var(--txt)}
+
+/* ---------- chess ---------- */
+#boardwrap{flex:none;--bs:min(calc(100vh - 56px - 28px), calc(100vw - 340px));width:var(--bs);height:var(--bs);position:relative}
+#board{width:100%;height:100%;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border-radius:8px;overflow:hidden;border:2px solid var(--line);position:relative}
+.sq{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:calc(var(--bs)/8*0.78);line-height:1}
+.sq.l{background:var(--light)} .sq.d{background:var(--dark)}
+.sq.last::before{content:"";position:absolute;inset:0;background:var(--last)}
+.sq.sel::before{content:"";position:absolute;inset:0;background:var(--sel)}
+.sq.chk::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,var(--check) 20%,transparent 75%)}
+.sq .hint{position:absolute;width:30%;height:30%;border-radius:50%;background:var(--hint)}
+.sq .hintcap{position:absolute;inset:4%;border-radius:50%;border:calc(var(--bs)/8*.07) solid var(--hint)}
+.pc{position:relative;z-index:1;pointer-events:none}
+.pc.w{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 0 3px #000,0 1px 2px rgba(0,0,0,.6)}
+.pc.b{color:#111;text-shadow:0 0 2px #fff,0 0 1px #fff}
+.coord{position:absolute;font-size:calc(var(--bs)/8*.17);font-weight:700;opacity:.65;z-index:2;pointer-events:none}
+.sq.l .coord{color:var(--dark)} .sq.d .coord{color:var(--light)}
+.coord.f{right:4%;bottom:2%} .coord.r{left:4%;top:2%}
+#status{font-size:18px;font-weight:600;min-height:26px}
+#status.alert{color:var(--warn)}
+#sub{color:var(--dim);font-size:13px;margin-top:2px;min-height:18px}
+.cap{display:flex;flex-wrap:wrap;gap:0;min-height:26px;font-size:20px;line-height:1.1}
+.cap.w{color:#fff;text-shadow:0 0 2px #000} .cap.b{color:#111;text-shadow:0 0 2px #fff}
+.cap-lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+#promo{position:absolute;inset:0;background:rgba(10,12,15,.72);display:none;align-items:center;justify-content:center;z-index:20}
+#promo.open{display:flex}
+#promo .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:10px}
+#promo button{font-size:calc(var(--bs)/8*.7);min-height:0;width:calc(var(--bs)/8*1.05);height:calc(var(--bs)/8*1.05);padding:0;line-height:1;flex:none;background:var(--light)}
+#promo button.pw{color:#fff;text-shadow:0 0 2px #000,0 0 3px #000}
+#promo button.pb{color:#111}
+
+/* ---------- canvas games (snake / pong) ---------- */
+.cvwrap{flex:none;position:relative;border-radius:10px;overflow:hidden;border:2px solid var(--line);background:#0d1115;touch-action:none}
+.cvwrap canvas{display:block;width:100%;height:100%}
+#snWrap{aspect-ratio:28/18;width:min(calc(100vw - 340px), calc((100vh - 56px - 28px)*28/18))}
+#pgWrap{aspect-ratio:800/480;width:min(calc(100vw - 340px), calc((100vh - 56px - 28px)*800/480))}
+.dpad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px;height:130px}
+.dpad button{font-size:24px;min-height:0;padding:0}
+.dpad .up{grid-column:2;grid-row:1} .dpad .lf{grid-column:1;grid-row:2} .dpad .dn{grid-column:2;grid-row:2} .dpad .rt{grid-column:3;grid-row:2}
+
+/* ---------- playing cards (blackjack / poker / solitaire) ---------- */
+.pcard{width:var(--cw);height:calc(var(--cw)*1.4);border-radius:calc(var(--cw)*.09);background:#f6f4ee;color:#1f2328;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.55);flex:none;font-weight:700;font-size:calc(var(--cw)*.27);line-height:1;overflow:hidden}
+.pcard.red{color:#c92a2a}
+.pcard .tl{position:absolute;left:calc(var(--cw)*.07);top:calc(var(--cw)*.05);white-space:nowrap}
+.pcard .mid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(var(--cw)*.55);opacity:.9;padding-top:calc(var(--cw)*.12)}
+.pcard.down{background:repeating-linear-gradient(45deg,#2b5c9a 0 6px,#244d82 6px 12px);border:calc(var(--cw)*.05) solid #f6f4ee}
+.pcard.down>*{display:none}
+.pcard.empty{background:transparent;box-shadow:none;border:2px dashed rgba(255,255,255,.18)}
+.pcard.empty>*{display:none}
+
+/* ---------- table games (blackjack / poker) ---------- */
+.table{flex:1;min-width:0;max-width:980px;height:100%;max-height:calc(100vh - 56px - 28px);background:radial-gradient(ellipse at center,#1f6b46 0%,#154a31 70%,#103a27 100%);border:2px solid #0c2a1d;border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 16px;gap:6px;position:relative;--cw:min(80px,calc((100vh - 56px - 28px - 250px)/2.9))}
+.hand{display:flex;gap:calc(var(--cw)*.12);min-height:calc(var(--cw)*1.4);align-items:center;justify-content:center;flex-wrap:nowrap}
+.who{display:flex;gap:10px;align-items:baseline;font-size:14px;color:#cfe9db;justify-content:center;min-height:22px}
+.who b{font-size:17px;color:#fff}
+.msg{font-size:20px;font-weight:600;text-align:center;min-height:30px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.msg.win{color:#9bf0c2} .msg.lose{color:#ffb4b4} .msg.push{color:#ffe08a}
+.bar{width:100%;display:flex;flex-direction:column;gap:8px;align-items:center}
+.bar .row{justify-content:center;width:100%}
+.bar button{flex:0 1 auto;min-width:92px;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.18)}
+.bar button.go{background:#2e7d52;border-color:#4cc38a}
+.bar button.warnb{background:#7a3030;border-color:#ef6b6b}
+.chipbtn{border-radius:99px!important;min-width:64px!important;font-weight:700;border-width:3px!important}
+.chip10{border-color:#d9d9d9!important}.chip50{border-color:#e65a5a!important}.chip100{border-color:#4a90e2!important}.chip500{border-color:#b66ee0!important}
+.bal{font-size:15px;color:#d4ecdf}.bal b{color:#fff;font-size:17px}
+
+/* poker bits */
+.pk-seat{display:flex;flex-direction:column;align-items:center;gap:4px}
+.pk-board{display:flex;gap:calc(var(--cw)*.12);align-items:center}
+.pk-pot{font-size:16px;color:#fff;font-weight:600;text-align:center}
+.dealerbtn{display:inline-block;width:20px;height:20px;border-radius:50%;background:#fff;color:#111;font-size:12px;font-weight:800;text-align:center;line-height:20px;margin-left:6px}
+.betbadge{background:rgba(0,0,0,.4);border-radius:99px;padding:2px 10px;font-size:13px;color:#ffe08a;min-height:20px}
+.raisebox{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
+.raisebox .amt{min-width:84px;text-align:center;font-weight:700;font-size:18px;color:#fff}
+.raisebox button{min-width:0!important;min-height:42px;padding:0 10px}
+
+/* ---------- solitaire ---------- */
+#g-sol aside{width:190px}
+#solArea{flex:1;min-width:0;height:100%;position:relative;touch-action:manipulation}
+#solArea .pcard{position:absolute;cursor:pointer}
+#solArea .pcard.sel{outline:3px solid var(--acc);outline-offset:-1px;box-shadow:0 0 12px rgba(90,169,230,.8)}
+#solArea .slot{position:absolute;border:2px dashed rgba(255,255,255,.16);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.22);font-weight:700;cursor:pointer}
+#solWin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,12,15,.72);z-index:30;font-size:30px;font-weight:700;flex-direction:column;gap:14px;text-align:center}
+
+@media (max-width:820px), (max-aspect-ratio:1/1){
+  #g-chess,#g-snake,#g-pong{flex-direction:column;overflow:auto;justify-content:flex-start;align-items:center}
+  #boardwrap{--bs:min(calc(100vw - 28px), calc(100vh - 56px - 220px))}
+  #snWrap,#pgWrap{width:calc(100vw - 28px)}
+  aside{width:100%;max-width:560px;overflow:visible}
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header><h1>Games</h1><nav id="tabs"></nav></header>
+
+  <!-- ===================== CHESS ===================== -->
+  <main class="game" id="g-chess" hidden>
+    <div id="boardwrap"><div id="board"></div><div id="promo"><div class="box" id="promoBox"></div></div></div>
+    <aside>
+      <div class="card"><div id="status">White to move</div><div id="sub"></div></div>
+      <div class="card">
+        <div class="cap-lbl">Captured by White</div><div class="cap b" id="capW"></div>
+        <div class="cap-lbl" style="margin-top:6px">Captured by Black</div><div class="cap w" id="capB"></div>
+      </div>
+      <div class="card">
+        <div class="lbl">Mode</div>
+        <div class="row" id="modeRow">
+          <button data-mode="cpu">vs Computer</button>
+          <button data-mode="two">2 Players</button>
+        </div>
+        <div id="cpuOpts">
+          <div class="lbl" style="margin-top:10px">You play</div>
+          <div class="row" id="sideRow"><button data-side="w">White</button><button data-side="b">Black</button></div>
+          <div class="lbl" style="margin-top:10px">Difficulty</div>
+          <div class="row" id="lvlRow"><button data-lvl="1">Easy</button><button data-lvl="2">Medium</button><button data-lvl="3">Hard</button></div>
+        </div>
+      </div>
+      <div class="row">
+        <button id="undoBtn">&#8630; Undo</button>
+        <button id="flipBtn">&#8645; Flip</button>
+        <button id="newBtn">New game</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ===================== SNAKE ===================== -->
+  <main class="game" id="g-snake" hidden>
+    <div class="cvwrap" id="snWrap"><canvas id="snCanvas"></canvas></div>
+    <aside>
+      <div class="card">
+        <div class="stat"><span>Score</span><b id="snScore">0</b></div>
+        <div class="stat"><span>Best</span><b id="snBest">0</b></div>
+        <div class="sub" id="snMsg">Swipe the board or use the arrows to start</div>
+      </div>
+      <div class="dpad">
+        <button class="up" data-d="u">&#9650;</button><button class="lf" data-d="l">&#9664;</button>
+        <button class="dn" data-d="d">&#9660;</button><button class="rt" data-d="r">&#9654;</button>
+      </div>
+      <div class="row"><button id="snPause">Pause</button><button id="snNew">New game</button></div>
+    </aside>
+  </main>
+
+  <!-- ===================== BLACKJACK ===================== -->
+  <main class="game" id="g-bj" hidden>
+    <div class="table">
+      <div><div class="who">Dealer <b id="bjDTot"></b></div><div class="hand" id="bjDealer"></div></div>
+      <div class="msg" id="bjMsg">Place your bet</div>
+      <div><div class="hand" id="bjPlayer"></div><div class="who">You <b id="bjPTot"></b></div></div>
+      <div class="bar">
+        <div class="bal">Balance <b id="bjBal"></b> &nbsp;&middot;&nbsp; Bet <b id="bjBet"></b></div>
+        <div class="row" id="bjBetBtns">
+          <button class="chipbtn chip10" data-add="10">10</button>
+          <button class="chipbtn chip50" data-add="50">50</button>
+          <button class="chipbtn chip100" data-add="100">100</button>
+          <button class="chipbtn chip500" data-add="500">500</button>
+          <button data-a="clear">Clear</button>
+          <button data-a="rebet">Rebet</button>
+          <button class="go" data-a="deal">Deal</button>
+          <button class="warnb" data-a="reset" hidden>Reset to $1,000</button>
+        </div>
+        <div class="row" id="bjActBtns" hidden>
+          <button class="go" data-a="hit">Hit</button>
+          <button data-a="stand">Stand</button>
+          <button data-a="double">Double</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== POKER ===================== -->
+  <main class="game" id="g-poker" hidden>
+    <div class="table">
+      <div class="pk-seat"><div class="who">Computer <b id="pkOppStack"></b><span class="dealerbtn" id="pkOppD" hidden>D</span></div>
+        <div class="hand" id="pkOpp"></div><div class="betbadge" id="pkOppBet"></div></div>
+      <div class="pk-seat"><div class="pk-board" id="pkBoard"></div><div class="pk-pot" id="pkPot"></div><div class="msg" id="pkMsg"></div></div>
+      <div class="pk-seat"><div class="betbadge" id="pkMeBet"></div><div class="hand" id="pkMe"></div>
+        <div class="who">You <b id="pkMeStack"></b><span class="dealerbtn" id="pkMeD" hidden>D</span></div></div>
+      <div class="bar" id="pkBar"></div>
+    </div>
+  </main>
+
+  <!-- ===================== SOLITAIRE ===================== -->
+  <main class="game" id="g-sol" hidden>
+    <div id="solArea"></div>
+    <aside>
+      <div class="card"><div class="stat"><span>Moves</span><b id="solMoves">0</b></div></div>
+      <div class="card"><div class="lbl">Draw</div>
+        <div class="row" id="solDrawRow"><button data-draw="1">1 card</button><button data-draw="3">3 cards</button></div></div>
+      <button id="solUndo">&#8630; Undo</button>
+      <button id="solAuto">Auto-finish</button>
+      <button id="solNew">New deal</button>
+    </aside>
+  </main>
+
+  <!-- ===================== PING PONG ===================== -->
+  <main class="game" id="g-pong" hidden>
+    <div class="cvwrap" id="pgWrap"><canvas id="pgCanvas"></canvas></div>
+    <aside>
+      <div class="card">
+        <div class="stat"><span id="pgNameL">You</span><b id="pgSL">0</b></div>
+        <div class="stat"><span id="pgNameR">Computer</span><b id="pgSR">0</b></div>
+        <div class="sub" id="pgMsg">Tap the table to serve</div>
+      </div>
+      <div class="card">
+        <div class="lbl">Mode</div>
+        <div class="row" id="pgModeRow"><button data-mode="1p">1 Player</button><button data-mode="2p">2 Players</button></div>
+        <div id="pgLvlBox"><div class="lbl" style="margin-top:10px">Difficulty</div>
+          <div class="row" id="pgLvlRow"><button data-lvl="1">Easy</button><button data-lvl="2">Medium</button><button data-lvl="3">Hard</button></div></div>
+        <div class="sub" id="pgHelp" style="margin-top:8px"></div>
+      </div>
+      <button id="pgNew">New game</button>
+    </aside>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ============================ SHARED HELPERS ============================ */
+const $ = id => document.getElementById(id);
+const ls = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+const rand = n => Math.floor(Math.random() * n);
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// Cards: r = 1..13 (A=1 ... K=13), s = 0..3 (spades, hearts, diamonds, clubs)
+const SUITS = ["♠︎", "♥︎", "♦︎", "♣︎"];
+const LABEL = [null, "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const isRed = s => s === 1 || s === 2;
+function newDeck(n) { const d = []; for (let k = 0; k < (n || 1); k++) for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) d.push({ r, s }); return shuffle(d); }
+function cardHtml(c, down, attrs, style) {
+  const a = attrs || "", st = style ? ' style="' + style + '"' : "";
+  if (down || !c) return '<div class="pcard down" ' + a + st + "></div>";
+  return '<div class="pcard' + (isRed(c.s) ? " red" : "") + '" ' + a + st + '><span class="tl">' + LABEL[c.r] + SUITS[c.s] +
+    '</span><span class="mid">' + SUITS[c.s] + "</span></div>";
+}
+const money = n => "$" + Math.round(n).toLocaleString("en-AU");
+function bindRow(rowId, fn) {   // delegated click on the buttons inside a row
+  $(rowId).addEventListener("click", e => { const b = e.target.closest("button"); if (b) fn(b); });
+}
+
+const Chess = (function () {
+/* ============================ CHESS ENGINE ============================ */
+// Square index = row*8 + col. Row 0 is rank 8 (Black's back rank), row 7 is rank 1.
+// Pieces are two-character strings: colour ('w'/'b') + type (P N B R Q K).
+const GLYPH = { K: "♚", Q: "♛", R: "♜", B: "♝", N: "♞", P: "♟" }; // solid glyphs, coloured by CSS
+const VAL = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 0 };
+const KN = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const KG = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const DIAG = [[-1,-1],[-1,1],[1,-1],[1,1]], ORTH = [[-1,0],[1,0],[0,-1],[0,1]];
+
+function startState() {
+  const b = new Array(64).fill(null);
+  const back = ["R","N","B","Q","K","B","N","R"];
+  for (let c = 0; c < 8; c++) { b[c] = "b" + back[c]; b[8 + c] = "bP"; b[48 + c] = "wP"; b[56 + c] = "w" + back[c]; }
+  return { board: b, turn: "w", castle: { wK: true, wQ: true, bK: true, bQ: true }, ep: -1, half: 0 };
+}
+const other = c => (c === "w" ? "b" : "w");
+const rc = sq => [sq >> 3, sq & 7];
+
+function attacked(board, sq, by) {
+  const [r, c] = rc(sq);
+  // pawns: a white pawn attacks up the board (towards row 0), so it sits one row below the target
+  const pr = by === "w" ? r + 1 : r - 1;
+  for (const dc of [-1, 1]) {
+    const cc = c + dc;
+    if (pr >= 0 && pr < 8 && cc >= 0 && cc < 8 && board[pr * 8 + cc] === by + "P") return true;
+  }
+  for (const [dr, dc] of KN) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && board[rr * 8 + cc] === by + "N") return true;
+  }
+  for (const [dr, dc] of KG) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && board[rr * 8 + cc] === by + "K") return true;
+  }
+  for (const [dr, dc] of DIAG) {
+    let rr = r + dr, cc = c + dc;
+    while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+      const p = board[rr * 8 + cc];
+      if (p) { if (p[0] === by && (p[1] === "B" || p[1] === "Q")) return true; break; }
+      rr += dr; cc += dc;
+    }
+  }
+  for (const [dr, dc] of ORTH) {
+    let rr = r + dr, cc = c + dc;
+    while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+      const p = board[rr * 8 + cc];
+      if (p) { if (p[0] === by && (p[1] === "R" || p[1] === "Q")) return true; break; }
+      rr += dr; cc += dc;
+    }
+  }
+  return false;
+}
+const kingSq = (board, col) => board.indexOf(col + "K");
+const inCheck = (s, col) => attacked(s.board, kingSq(s.board, col), other(col));
+
+function pseudoMoves(s) {
+  const { board, turn, castle, ep } = s, moves = [], me = turn, foe = other(turn);
+  const add = (from, to, extra) => moves.push(Object.assign({ from, to, piece: board[from], cap: board[to] }, extra));
+  for (let from = 0; from < 64; from++) {
+    const p = board[from];
+    if (!p || p[0] !== me) continue;
+    const t = p[1], [r, c] = rc(from);
+    if (t === "P") {
+      const dir = me === "w" ? -1 : 1, start = me === "w" ? 6 : 1, last = me === "w" ? 0 : 7;
+      const r1 = r + dir;
+      const push = (to, extra) => {
+        if (to >> 3 === last) for (const pr of ["Q", "R", "B", "N"]) add(from, to, Object.assign({ promo: pr }, extra));
+        else add(from, to, extra);
+      };
+      if (r1 >= 0 && r1 < 8 && !board[r1 * 8 + c]) {
+        push(r1 * 8 + c);
+        if (r === start && !board[(r + 2 * dir) * 8 + c]) add(from, (r + 2 * dir) * 8 + c, { dbl: true });
+      }
+      for (const dc of [-1, 1]) {
+        const cc = c + dc;
+        if (cc < 0 || cc > 7 || r1 < 0 || r1 > 7) continue;
+        const to = r1 * 8 + cc;
+        if (board[to] && board[to][0] === foe) push(to);
+        else if (to === ep) add(from, to, { ep: true, cap: foe + "P" });
+      }
+    } else if (t === "N" || t === "K") {
+      for (const [dr, dc] of (t === "N" ? KN : KG)) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue;
+        const to = rr * 8 + cc;
+        if (!board[to] || board[to][0] === foe) add(from, to);
+      }
+      if (t === "K") {
+        const row = me === "w" ? 56 : 0;
+        if (from === row + 4 && !attacked(board, from, foe)) {
+          if (castle[me + "K"] && board[row + 7] === me + "R" && !board[row + 5] && !board[row + 6] &&
+              !attacked(board, row + 5, foe) && !attacked(board, row + 6, foe)) add(from, row + 6, { castle: "K" });
+          if (castle[me + "Q"] && board[row] === me + "R" && !board[row + 1] && !board[row + 2] && !board[row + 3] &&
+              !attacked(board, row + 3, foe) && !attacked(board, row + 2, foe)) add(from, row + 2, { castle: "Q" });
+        }
+      }
+    } else {
+      const dirs = t === "B" ? DIAG : t === "R" ? ORTH : DIAG.concat(ORTH);
+      for (const [dr, dc] of dirs) {
+        let rr = r + dr, cc = c + dc;
+        while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+          const to = rr * 8 + cc, q = board[to];
+          if (!q) add(from, to);
+          else { if (q[0] === foe) add(from, to); break; }
+          rr += dr; cc += dc;
+        }
+      }
+    }
+  }
+  return moves;
+}
+
+function applyMove(s, m) {
+  const b = s.board.slice(), me = s.turn;
+  b[m.to] = m.promo ? me + m.promo : b[m.from];
+  b[m.from] = null;
+  if (m.ep) b[m.to + (me === "w" ? 8 : -8)] = null;
+  if (m.castle) {
+    const row = me === "w" ? 56 : 0;
+    if (m.castle === "K") { b[row + 5] = me + "R"; b[row + 7] = null; }
+    else { b[row + 3] = me + "R"; b[row] = null; }
+  }
+  const cs = Object.assign({}, s.castle);
+  if (m.piece[1] === "K") { cs[me + "K"] = false; cs[me + "Q"] = false; }
+  for (const [sq, key] of [[63, "wK"], [56, "wQ"], [7, "bK"], [0, "bQ"]]) if (m.from === sq || m.to === sq) cs[key] = false;
+  return {
+    board: b, turn: other(me), castle: cs,
+    ep: m.dbl ? (m.from + m.to) >> 1 : -1,
+    half: (m.piece[1] === "P" || m.cap) ? 0 : s.half + 1
+  };
+}
+
+function legalMoves(s) {
+  return pseudoMoves(s).filter(m => { const n = applyMove(s, m); return !inCheck(n, s.turn); });
+}
+
+function insufficient(board) {
+  const rest = board.filter(p => p && p[1] !== "K");
+  if (!rest.length) return true;
+  if (rest.length === 1 && (rest[0][1] === "N" || rest[0][1] === "B")) return true;
+  return false;
+}
+
+// "check" | "mate" | "stale" | "draw50" | "insuf" | null
+function gameStatus(s) {
+  if (insufficient(s.board)) return "insuf";
+  const moves = legalMoves(s);
+  if (!moves.length) return inCheck(s, s.turn) ? "mate" : "stale";
+  if (s.half >= 100) return "draw50";
+  return inCheck(s, s.turn) ? "check" : null;
+}
+
+/* ---- computer player: negamax + alpha-beta ---- */
+function evaluate(s) {   // score from the side-to-move's point of view
+  let score = 0;
+  for (let i = 0; i < 64; i++) {
+    const p = s.board[i]; if (!p) continue;
+    const [r, c] = rc(i), t = p[1], sign = p[0] === "w" ? 1 : -1;
+    let v = VAL[t];
+    const centre = 3 - Math.max(Math.abs(c - 3.5) - 0.5, Math.abs(r - 3.5) - 0.5); // 3 in the middle, 0 at the rim
+    if (t === "P") { const adv = p[0] === "w" ? 6 - r : r - 1; v += adv * 6 + centre * 2; }
+    else if (t === "N" || t === "B") v += centre * 8;
+    else if (t === "Q") v += centre * 2;
+    score += sign * v;
+  }
+  return s.turn === "w" ? score : -score;
+}
+function orderMoves(moves) {
+  return moves.sort((a, b) => scoreMove(b) - scoreMove(a));
+}
+function scoreMove(m) {
+  let v = 0;
+  if (m.cap) v += 10 * VAL[m.cap[1]] - VAL[m.piece[1]] / 10;
+  if (m.promo) v += VAL[m.promo];
+  return v;
+}
+function negamax(s, depth, alpha, beta, ply) {
+  const moves = legalMoves(s);
+  if (!moves.length) return inCheck(s, s.turn) ? -100000 + ply : 0;
+  if (s.half >= 100 || insufficient(s.board)) return 0;
+  if (depth === 0) return evaluate(s);
+  let best = -Infinity;
+  for (const m of orderMoves(moves)) {
+    const v = -negamax(applyMove(s, m), depth - 1, -beta, -alpha, ply + 1);
+    if (v > best) best = v;
+    if (best > alpha) alpha = best;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+function chooseMove(s, level) {
+  const moves = legalMoves(s);
+  if (!moves.length) return null;
+  if (level === 1) {                       // easy: mostly random, but grabs a free capture now and then
+    const caps = moves.filter(m => m.cap);
+    if (caps.length && Math.random() < 0.5) return caps[Math.floor(Math.random() * caps.length)];
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+  const depth = level === 2 ? 2 : 3;
+  let bestV = -Infinity, bestM = [];
+  for (const m of orderMoves(moves)) {
+    const v = -negamax(applyMove(s, m), depth - 1, -Infinity, Infinity, 1);
+    if (v > bestV + 1) { bestV = v; bestM = [m]; }
+    else if (Math.abs(v - bestV) <= 1) bestM.push(m);
+  }
+  return bestM[Math.floor(Math.random() * bestM.length)];
+}
+
+/* ============================ UI ============================ */
+const settings = (() => {
+  const d = { mode: "cpu", side: "w", lvl: 2 };
+  try { return Object.assign(d, JSON.parse(localStorage.getItem("chessSettings") || "{}")); } catch (e) { return d; }
+})();
+function saveSettings() { try { localStorage.setItem("chessSettings", JSON.stringify(settings)); } catch (e) {} }
+
+let state, history, selected = -1, targets = [], lastMove = null, flipped = false, thinking = false, over = false, pendingPromo = null;
+
+function newGame() {
+  state = startState(); history = []; selected = -1; targets = []; lastMove = null; over = false; thinking = false; pendingPromo = null;
+  flipped = settings.mode === "cpu" && settings.side === "b";
+  $("promo").classList.remove("open");
+  render();
+  maybeCpu();
+}
+const cpuTurn = () => settings.mode === "cpu" && state.turn !== settings.side;
+
+function render() {
+  const board = $("board");
+  const st = over ? gameStatus(state) : gameStatus(state);
+  const kSq = st === "check" || st === "mate" ? kingSq(state.board, state.turn) : -1;
+  let html = "";
+  for (let vr = 0; vr < 8; vr++) for (let vc = 0; vc < 8; vc++) {
+    const r = flipped ? 7 - vr : vr, c = flipped ? 7 - vc : vc, sq = r * 8 + c;
+    const p = state.board[sq];
+    const cls = ["sq", (r + c) % 2 === 0 ? "l" : "d"];
+    if (lastMove && (sq === lastMove.from || sq === lastMove.to)) cls.push("last");
+    if (sq === selected) cls.push("sel");
+    if (sq === kSq) cls.push("chk");
+    const isT = targets.includes(sq);
+    html += `<div class="${cls.join(" ")}" data-sq="${sq}">` +
+      (vc === 0 ? `<span class="coord r">${8 - r}</span>` : "") +
+      (vr === 7 ? `<span class="coord f">${"abcdefgh"[c]}</span>` : "") +
+      (p ? `<span class="pc ${p[0]}">${GLYPH[p[1]]}︎</span>` : "") +
+      (isT ? (p || (state.ep === sq && selected >= 0 && state.board[selected] && state.board[selected][1] === "P") ? '<span class="hintcap"></span>' : '<span class="hint"></span>') : "") +
+      `</div>`;
+  }
+  board.innerHTML = html;
+  renderStatus(st);
+  renderCaptured();
+  $("undoBtn").disabled = !history.length || thinking;
+  document.querySelectorAll("#modeRow button").forEach(b => b.classList.toggle("on", b.dataset.mode === settings.mode));
+  document.querySelectorAll("#sideRow button").forEach(b => b.classList.toggle("on", b.dataset.side === settings.side));
+  document.querySelectorAll("#lvlRow button").forEach(b => b.classList.toggle("on", Number(b.dataset.lvl) === settings.lvl));
+  $("cpuOpts").style.display = settings.mode === "cpu" ? "" : "none";
+}
+
+function renderStatus(st) {
+  const name = state.turn === "w" ? "White" : "Black";
+  let main = name + " to move", sub = "", alert = false;
+  if (st === "mate") { main = "Checkmate – " + (state.turn === "w" ? "Black" : "White") + " wins"; alert = true; over = true; }
+  else if (st === "stale") { main = "Stalemate – draw"; alert = true; over = true; }
+  else if (st === "draw50") { main = "Draw – 50-move rule"; alert = true; over = true; }
+  else if (st === "insuf") { main = "Draw – not enough material"; alert = true; over = true; }
+  else {
+    over = false;
+    if (st === "check") { sub = name + " is in check"; alert = true; }
+    if (settings.mode === "cpu") {
+      if (thinking) sub = "Computer is thinking…";
+      else if (!sub) sub = state.turn === settings.side ? "Your move" : "";
+    }
+  }
+  $("status").textContent = main;
+  $("status").classList.toggle("alert", alert);
+  $("sub").textContent = sub;
+}
+
+function renderCaptured() {
+  const capByW = [], capByB = [];
+  for (const h of history) if (h.m.cap) (h.m.piece[0] === "w" ? capByW : capByB).push(h.m.cap);
+  const sortFn = (a, b) => VAL[b[1]] - VAL[a[1]];
+  $("capW").textContent = capByW.sort(sortFn).map(p => GLYPH[p[1]] + "︎").join("") || " ";
+  $("capB").textContent = capByB.sort(sortFn).map(p => GLYPH[p[1]] + "︎").join("") || " ";
+}
+
+function canHumanMove() { return !over && !thinking && !pendingPromo && !cpuTurn(); }
+
+$("board").addEventListener("click", e => {
+  const el = e.target.closest(".sq"); if (!el || !canHumanMove()) return;
+  const sq = Number(el.dataset.sq), p = state.board[sq];
+  if (selected >= 0 && targets.includes(sq)) { tryMove(selected, sq); return; }
+  if (p && p[0] === state.turn) {
+    selected = sq === selected ? -1 : sq;
+    targets = selected >= 0 ? legalMoves(state).filter(m => m.from === selected).map(m => m.to) : [];
+  } else { selected = -1; targets = []; }
+  render();
+});
+
+function tryMove(from, to) {
+  const cands = legalMoves(state).filter(m => m.from === from && m.to === to);
+  if (!cands.length) return;
+  if (cands[0].promo) { askPromotion(cands); return; }
+  doMove(cands[0]);
+}
+function askPromotion(cands) {
+  pendingPromo = cands;
+  const col = state.turn;
+  $("promoBox").innerHTML = ["Q", "R", "B", "N"].map(t =>
+    `<button class="p${col}" data-t="${t}">${GLYPH[t]}︎</button>`).join("");
+  $("promo").classList.add("open");
+}
+$("promoBox").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || !pendingPromo) return;
+  const m = pendingPromo.find(x => x.promo === b.dataset.t);
+  pendingPromo = null; $("promo").classList.remove("open");
+  if (m) doMove(m);
+});
+
+function doMove(m) {
+  history.push({ state, m, last: lastMove });
+  state = applyMove(state, m);
+  lastMove = { from: m.from, to: m.to };
+  selected = -1; targets = [];
+  render();
+  maybeCpu();
+}
+
+function maybeCpu() {
+  if (over || !cpuTurn()) return;
+  thinking = true; render();
+  setTimeout(() => {
+    const m = chooseMove(state, settings.lvl);
+    thinking = false;
+    if (m && cpuTurn() && !over) doMove(m); else render();
+  }, 350);
+}
+
+function undo() {
+  if (!history.length || thinking) return;
+  // against the computer, take back both its reply and your move so it is your turn again
+  do { const h = history.pop(); state = h.state; lastMove = h.last; }
+  while (settings.mode === "cpu" && history.length && cpuTurn());
+  selected = -1; targets = []; over = false; pendingPromo = null; $("promo").classList.remove("open");
+  render();
+  maybeCpu();
+}
+
+$("undoBtn").addEventListener("click", undo);
+$("flipBtn").addEventListener("click", () => { flipped = !flipped; render(); });
+$("newBtn").addEventListener("click", newGame);
+$("modeRow").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; settings.mode = b.dataset.mode; saveSettings(); newGame(); });
+$("sideRow").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; settings.side = b.dataset.side; saveSettings(); newGame(); });
+$("lvlRow").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; settings.lvl = Number(b.dataset.lvl); saveSettings(); render(); });
+
+newGame();
+return { enter() { render(); }, leave() {} };
+})();
+
+/* ============================ SNAKE ============================ */
+const Snake = (function () {
+  const wrap = $("snWrap"), cv = $("snCanvas"), ctx = cv.getContext("2d");
+  const COLS = 28, ROWS = 18;
+  let snake, dir, queue, food, score, best = Number(ls("snakeBest", 0)), timer = null, state = "idle"; // idle | run | paused | over
+  let active = false;
+
+  function reset() {
+    clearTimeout(timer);
+    snake = [{ x: 8, y: 9 }, { x: 7, y: 9 }, { x: 6, y: 9 }];
+    dir = { x: 1, y: 0 }; queue = []; score = 0; state = "idle";
+    placeFood(); ui(); draw();
+  }
+  function placeFood() {
+    do { food = { x: rand(COLS), y: rand(ROWS) }; } while (snake.some(s => s.x === food.x && s.y === food.y));
+  }
+  function ui() {
+    $("snScore").textContent = score; $("snBest").textContent = best;
+    $("snPause").textContent = state === "paused" ? "Resume" : "Pause";
+    $("snMsg").textContent = state === "idle" ? "Swipe the board or use the arrows to start"
+      : state === "paused" ? "Paused" : state === "over" ? "Game over" : "Eat the red apples";
+  }
+  function delay() { return Math.max(62, 135 - score * 3); }
+  function schedule() { clearTimeout(timer); if (state === "run") timer = setTimeout(tick, delay()); }
+  function start() { if (state === "idle") { state = "run"; ui(); schedule(); } }
+  function setDir(dx, dy) {
+    if (state === "over") return;
+    const last = queue.length ? queue[queue.length - 1] : dir;
+    if ((last.x === -dx && last.y === -dy) || (last.x === dx && last.y === dy)) { if (state === "idle") start(); return; }
+    if (queue.length < 3) queue.push({ x: dx, y: dy });
+    if (state === "idle") start();
+    else if (state === "paused") { state = "run"; ui(); schedule(); }
+  }
+  function tick() {
+    if (state !== "run") return;
+    if (queue.length) dir = queue.shift();
+    const h = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    const eating = h.x === food.x && h.y === food.y;
+    const body = eating ? snake : snake.slice(0, -1);
+    if (h.x < 0 || h.y < 0 || h.x >= COLS || h.y >= ROWS || body.some(s => s.x === h.x && s.y === h.y)) { over(); return; }
+    snake.unshift(h);
+    if (eating) {
+      score++;
+      if (score > best) { best = score; lsSet("snakeBest", best); }
+      if (snake.length >= COLS * ROWS) { over(); return; }
+      placeFood(); ui();
+    } else snake.pop();
+    draw(); schedule();
+  }
+  function over() { state = "over"; ui(); draw(); }
+  function pause() {
+    if (state === "run") { state = "paused"; clearTimeout(timer); }
+    else if (state === "paused") { state = "run"; schedule(); }
+    ui(); draw();
+  }
+
+  function size() {
+    const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    draw();
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function draw() {
+    const W = cv.width, H = cv.height, c = W / COLS;
+    if (!W) return;
+    ctx.fillStyle = "#0d1115"; ctx.fillRect(0, 0, W, H);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if ((x + y) % 2 === 0) { ctx.fillStyle = "rgba(255,255,255,.025)"; ctx.fillRect(x * c, y * c, c, c); }
+    }
+    // apple
+    ctx.fillStyle = "#e5484d"; ctx.beginPath(); ctx.arc((food.x + .5) * c, (food.y + .56) * c, c * .38, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3fb950"; ctx.fillRect((food.x + .5) * c - c * .04, food.y * c + c * .06, c * .08, c * .2);
+    // snake
+    snake.forEach((s, i) => {
+      const t = 1 - i / Math.max(snake.length, 8) * 0.55;
+      ctx.fillStyle = state === "over" ? "#6b7885" : `hsl(142 60% ${Math.round(30 + 22 * t)}%)`;
+      rr(s.x * c + c * .06, s.y * c + c * .06, c * .88, c * .88, c * .28); ctx.fill();
+    });
+    const h = snake[0], ex = dir.x, ey = dir.y;
+    ctx.fillStyle = "#fff";
+    for (const side of [-1, 1]) {
+      const px = (h.x + .5) * c + (ey !== 0 ? side * c * .22 : ex * c * .12);
+      const py = (h.y + .5) * c + (ex !== 0 ? side * c * .22 : ey * c * .12);
+      ctx.beginPath(); ctx.arc(px, py, c * .1, 0, 7); ctx.fill();
+    }
+    if (state !== "run") {
+      ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 " + Math.round(c * 1.5) + "px Segoe UI, system-ui, sans-serif";
+      const t1 = state === "over" ? "Game over – score " + score : state === "paused" ? "Paused" : "Snake";
+      ctx.fillText(t1, W / 2, H / 2 - c * .4);
+      ctx.font = "500 " + Math.round(c * .85) + "px Segoe UI, system-ui, sans-serif"; ctx.fillStyle = "#cfd8e0";
+      ctx.fillText(state === "over" ? "Tap here or press New game" : state === "paused" ? "Tap to resume" : "Swipe to start", W / 2, H / 2 + c * 1.0);
+    }
+  }
+
+  // swipe / tap on the board
+  let p0 = null;
+  wrap.addEventListener("pointerdown", e => { p0 = { x: e.clientX, y: e.clientY }; try { wrap.setPointerCapture(e.pointerId); } catch (x) {} });
+  wrap.addEventListener("pointermove", e => {
+    if (!p0) return;
+    const dx = e.clientX - p0.x, dy = e.clientY - p0.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > 22) {
+      if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0); else setDir(0, dy > 0 ? 1 : -1);
+      p0 = { x: e.clientX, y: e.clientY, moved: true };
+    }
+  });
+  wrap.addEventListener("pointerup", () => {
+    if (p0 && !p0.moved) { if (state === "over") reset(); else if (state === "paused") pause(); }
+    p0 = null;
+  });
+  wrap.addEventListener("pointercancel", () => { p0 = null; });
+  document.querySelector("#g-snake .dpad").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const d = b.dataset.d; setDir(d === "l" ? -1 : d === "r" ? 1 : 0, d === "u" ? -1 : d === "d" ? 1 : 0);
+  });
+  $("snPause").addEventListener("click", pause);
+  $("snNew").addEventListener("click", reset);
+  document.addEventListener("keydown", e => {
+    if (!active) return;
+    const k = e.key;
+    const m = { ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0] }[k];
+    if (m) { e.preventDefault(); setDir(m[0], m[1]); } else if (k === " " || k === "p") { e.preventDefault(); pause(); }
+  });
+  window.addEventListener("resize", () => { if (active) size(); });
+  reset();
+  return {
+    enter() { active = true; size(); },
+    leave() { active = false; if (state === "run") { state = "paused"; clearTimeout(timer); ui(); } }
+  };
+})();
+
+/* ============================ BLACKJACK (21) ============================ */
+const Blackjack = (function () {
+  let deck = [], player = [], dealer = [], bal = Number(ls("bjBal", 1000)), bet = 0, lastBet = Number(ls("bjLastBet", 0));
+  let phase = "bet", hideHole = false, msg = "Place your bet", msgCls = "", busy = false, doubled = false;
+  if (!(bal >= 0)) bal = 1000;
+
+  function draw() { if (deck.length < 20) deck = newDeck(4); return deck.pop(); }
+  function total(h) {
+    let t = 0, a = 0;
+    for (const c of h) { if (c.r === 1) { a++; t += 11; } else t += Math.min(c.r, 10); }
+    while (t > 21 && a > 0) { t -= 10; a--; }
+    return t;
+  }
+  const isBJ = h => h.length === 2 && total(h) === 21;
+  const save = () => { lsSet("bjBal", bal); lsSet("bjLastBet", lastBet); };
+
+  function render() {
+    const hand = (id, cards, hideSecond) => {
+      $(id).innerHTML = cards.map((c, i) => cardHtml(c, hideSecond && i === 1)).join("");
+    };
+    hand("bjDealer", dealer, hideHole); hand("bjPlayer", player, false);
+    $("bjDTot").textContent = dealer.length ? (hideHole ? total([dealer[0]]) : total(dealer)) : "";
+    $("bjPTot").textContent = player.length ? total(player) : "";
+    $("bjBal").textContent = money(bal); $("bjBet").textContent = bet ? money(bet) : "–";
+    const m = $("bjMsg"); m.textContent = msg; m.className = "msg " + msgCls;
+    const betting = phase === "bet";
+    $("bjBetBtns").hidden = !betting; $("bjActBtns").hidden = betting;
+    const broke = bal < 10 && bet === 0 && betting;
+    $("bjBetBtns").querySelector('[data-a="reset"]').hidden = !broke;
+    $("bjBetBtns").querySelectorAll("[data-add]").forEach(b => { b.hidden = broke; b.disabled = bal < Number(b.dataset.add); });
+    $("bjBetBtns").querySelector('[data-a="deal"]').hidden = broke;
+    $("bjBetBtns").querySelector('[data-a="clear"]').hidden = broke;
+    $("bjBetBtns").querySelector('[data-a="rebet"]').hidden = broke;
+    $("bjBetBtns").querySelector('[data-a="deal"]').disabled = bet <= 0;
+    $("bjBetBtns").querySelector('[data-a="clear"]').disabled = bet <= 0;
+    $("bjBetBtns").querySelector('[data-a="rebet"]').disabled = !(lastBet > 0 && bet === 0 && bal >= Math.min(lastBet, bal) && bal > 0);
+    $("bjActBtns").querySelector('[data-a="double"]').disabled = !(phase === "play" && player.length === 2 && bal >= bet) || busy;
+    $("bjActBtns").querySelectorAll("button").forEach(b => { if (b.dataset.a !== "double") b.disabled = busy; });
+  }
+
+  function deal() {
+    if (bet <= 0 || phase !== "bet") return;
+    lastBet = bet; save();
+    player = [draw(), draw()]; dealer = [draw(), draw()]; hideHole = true; doubled = false;
+    phase = "play"; msg = ""; msgCls = "";
+    if (isBJ(player) || isBJ(dealer)) settle(); else render();
+  }
+  function hit() {
+    if (phase !== "play" || busy) return;
+    player.push(draw());
+    const t = total(player);
+    if (t > 21) settle(); else if (t === 21) stand(); else render();
+  }
+  function stand() {
+    if (phase !== "play") return;
+    hideHole = false; busy = true; render();
+    const step = () => {
+      if (total(dealer) < 17) { dealer.push(draw()); render(); setTimeout(step, 600); }
+      else { busy = false; settle(); }
+    };
+    setTimeout(step, 500);
+  }
+  function doubleDown() {
+    if (phase !== "play" || player.length !== 2 || bal < bet || busy) return;
+    bal -= bet; bet *= 2; doubled = true;
+    player.push(draw());
+    if (total(player) > 21) settle(); else stand();
+  }
+  function settle() {
+    hideHole = false;
+    const pT = total(player), dT = total(dealer);
+    let res;
+    if (pT > 21) res = "lose";
+    else if (isBJ(player) && isBJ(dealer)) res = "push";
+    else if (isBJ(player)) res = "bj";
+    else if (isBJ(dealer)) res = "lose";
+    else if (dT > 21 || pT > dT) res = "win";
+    else if (pT === dT) res = "push";
+    else res = "lose";
+    if (res === "bj") { bal += bet * 2.5; msg = "Blackjack! You win " + money(bet * 1.5); msgCls = "win"; }
+    else if (res === "win") { bal += bet * 2; msg = (dT > 21 ? "Dealer busts! " : "") + "You win " + money(bet); msgCls = "win"; }
+    else if (res === "push") { bal += bet; msg = "Push – bet returned"; msgCls = "push"; }
+    else { msg = (pT > 21 ? "Bust! " : "") + "Dealer wins – you lose " + money(bet); msgCls = "lose"; }
+    bet = 0; phase = "bet"; busy = false; save(); render();
+  }
+  function addBet(n) { if (phase !== "bet" || bal < n) return; if (player.length && hideHole === false && msg) { /* new round: clear old hands on first chip */ } bal -= n; bet += n; newRoundVisual(); render(); }
+  function newRoundVisual() { if (bet > 0 && msgCls !== "" ) { msg = "Place your bet"; msgCls = ""; player = []; dealer = []; } }
+
+  bindRow("bjBetBtns", b => {
+    if (b.dataset.add) addBet(Number(b.dataset.add));
+    else if (b.dataset.a === "clear") { bal += bet; bet = 0; render(); }
+    else if (b.dataset.a === "deal") deal();
+    else if (b.dataset.a === "rebet") { const n = Math.min(lastBet, bal); if (n > 0) { bet = 0; bal += 0; addBet(n); } }
+    else if (b.dataset.a === "reset") { bal = 1000; bet = 0; msg = "Place your bet"; msgCls = ""; player = []; dealer = []; save(); render(); }
+  });
+  bindRow("bjActBtns", b => {
+    const a = b.dataset.a;
+    if (a === "hit") hit(); else if (a === "stand") stand(); else if (a === "double") doubleDown();
+  });
+  return { enter() { render(); }, leave() {} };
+})();
+
+/* ============================ POKER (Texas Hold'em, heads-up vs computer) ============================ */
+const Poker = (function () {
+  const SB = 10, BB = 20, START = 1000;
+  const HAND_NAMES = ["High card", "Pair", "Two pair", "Three of a kind", "Straight", "Flush", "Full house", "Four of a kind", "Straight flush"];
+  let S;
+
+  /* ---- hand evaluation: returns [category, ...tiebreakers]; ace is high (14) except in the wheel ---- */
+  const rv = c => (c.r === 1 ? 14 : c.r);
+  function straightHigh(has) {          // has[2..14] booleans; returns highest straight top card or 0
+    for (let hi = 14; hi >= 5; hi--) {
+      let ok = true;
+      for (let k = 0; k < 5; k++) { let r = hi - k; if (r === 1) r = 14; if (!has[r]) { ok = false; break; } }
+      if (ok) return hi;
+    }
+    return 0;
+  }
+  function evalHand(cards) {
+    const cnt = new Array(15).fill(0), bySuit = [[], [], [], []];
+    for (const c of cards) { const v = rv(c); cnt[v]++; bySuit[c.s].push(v); }
+    const fs = bySuit.findIndex(a => a.length >= 5);
+    if (fs >= 0) {
+      const has = []; bySuit[fs].forEach(v => has[v] = true);
+      const sh = straightHigh(has); if (sh) return [8, sh];
+    }
+    const quads = [], trips = [], pairs = [], singles = [];
+    for (let v = 14; v >= 2; v--) { if (cnt[v] === 4) quads.push(v); else if (cnt[v] === 3) trips.push(v); else if (cnt[v] === 2) pairs.push(v); else if (cnt[v] === 1) singles.push(v); }
+    if (quads.length) { const k = [...trips, ...pairs, ...singles].sort((a, b) => b - a)[0]; return [7, quads[0], k]; }
+    if (trips.length && (trips.length > 1 || pairs.length)) { const p = trips.length > 1 ? Math.max(trips[1], pairs[0] || 0) : pairs[0]; return [6, trips[0], p]; }
+    if (fs >= 0) return [5, ...bySuit[fs].sort((a, b) => b - a).slice(0, 5)];
+    const has = []; for (let v = 2; v <= 14; v++) has[v] = cnt[v] > 0;
+    const sh = straightHigh(has); if (sh) return [4, sh];
+    if (trips.length) return [3, trips[0], ...singles.concat(pairs).sort((a, b) => b - a).slice(0, 2)];
+    if (pairs.length >= 2) return [2, pairs[0], pairs[1], [...pairs.slice(2), ...singles].sort((a, b) => b - a)[0]];
+    if (pairs.length === 1) return [1, pairs[0], ...singles.slice(0, 3)];
+    return [0, ...singles.slice(0, 5)];
+  }
+  function cmp(a, b) { for (let i = 0; i < Math.max(a.length, b.length); i++) { const d = (a[i] || 0) - (b[i] || 0); if (d) return d; } return 0; }
+  const handName = h => (h[0] === 8 && h[1] === 14 ? "Royal flush" : HAND_NAMES[h[0]]);
+
+  function equity(hole, board, sims) {
+    const used = new Set(hole.concat(board).map(c => c.r * 4 + c.s)), rest = [];
+    for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) if (!used.has(r * 4 + s)) rest.push({ r, s });
+    const need = 5 - board.length; let w = 0;
+    for (let i = 0; i < sims; i++) {
+      const pick = 2 + need;
+      for (let k = 0; k < pick; k++) { const j = k + rand(rest.length - k); [rest[k], rest[j]] = [rest[j], rest[k]]; }
+      const opp = [rest[0], rest[1]], extra = rest.slice(2, 2 + need), full = board.concat(extra);
+      const d = cmp(evalHand(hole.concat(full)), evalHand(opp.concat(full)));
+      w += d > 0 ? 1 : d === 0 ? .5 : 0;
+    }
+    return w / sims;
+  }
+
+  /* ---- game flow ---- */
+  function newMatch() {
+    S = { stacks: [START, START], bets: [0, 0], pot: 0, hole: [[], []], board: [], deck: [], button: 1, street: 0, turn: 0,
+      acted: [false, false], allIn: [false, false], minRaise: BB, state: "idle", msg: "", reveal: false, raiseTo: 0, raises: 0, timer: null };
+    startHand();
+  }
+  function post(p, amt) { const a = Math.min(amt, S.stacks[p]); S.stacks[p] -= a; S.bets[p] += a; if (S.stacks[p] === 0) S.allIn[p] = true; }
+  function startHand() {
+    clearTimeout(S.timer);
+    if (S.stacks[0] <= 0 || S.stacks[1] <= 0) {
+      S.state = "matchover"; S.msg = S.stacks[0] <= 0 ? "You're out of chips – the computer wins the match" : "You win the match!"; render(); return;
+    }
+    S.button = 1 - S.button; S.deck = newDeck(1);
+    S.hole = [[S.deck.pop(), S.deck.pop()], [S.deck.pop(), S.deck.pop()]]; S.board = [];
+    S.pot = 0; S.bets = [0, 0]; S.acted = [false, false]; S.allIn = [false, false]; S.street = 0; S.reveal = false;
+    S.state = "hand"; S.minRaise = BB; S.raises = 0; S.msg = "";
+    post(S.button, SB); post(1 - S.button, BB);
+    proceed(S.button);
+  }
+  const needAct = p => !S.allIn[p] && (!S.acted[p] || S.bets[p] < S.bets[1 - p]);
+  const curBet = () => Math.max(S.bets[0], S.bets[1]);
+  const potTotal = () => S.pot + S.bets[0] + S.bets[1];
+  function proceed(first) {
+    if (!needAct(0) && !needAct(1)) { endStreet(); return; }
+    S.turn = needAct(first) ? first : 1 - first;
+    S.raiseTo = 0; render();
+    if (S.turn === 1) S.timer = setTimeout(cpuAct, 700 + rand(600));
+  }
+  function endStreet() {
+    const diff = S.bets[0] - S.bets[1];                 // return any uncalled excess
+    if (diff > 0) { S.stacks[0] += diff; S.bets[0] -= diff; } else if (diff < 0) { S.stacks[1] -= diff; S.bets[1] += diff; }
+    S.pot += S.bets[0] + S.bets[1]; S.bets = [0, 0]; S.acted = [false, false]; S.minRaise = BB; S.raises = 0;
+    if (S.street === 3) { showdown(); return; }
+    S.street++;
+    const n = S.street === 1 ? 3 : 1;
+    for (let i = 0; i < n; i++) S.board.push(S.deck.pop());
+    if (S.allIn[0] || S.allIn[1]) { S.turn = -1; render(); S.timer = setTimeout(endStreet, 1000); return; }
+    proceed(1 - S.button);
+  }
+  function award(p, amount) { S.stacks[p] += amount; }
+  function fold(p) {
+    const o = 1 - p, won = S.pot + S.bets[0] + S.bets[1];
+    S.pot = 0; S.bets = [0, 0]; award(o, won);
+    S.msg = p === 0 ? "You fold – computer wins " + money(won) : "Computer folds – you win " + money(won);
+    S.state = "over"; S.turn = -1; render();
+  }
+  function showdown() {
+    S.reveal = true; S.turn = -1;
+    const h0 = evalHand(S.hole[0].concat(S.board)), h1 = evalHand(S.hole[1].concat(S.board)), d = cmp(h0, h1), pot = S.pot;
+    if (d > 0) { award(0, pot); S.msg = "You win " + money(pot) + " with " + handName(h0) + " (computer: " + handName(h1) + ")"; }
+    else if (d < 0) { award(1, pot); S.msg = "Computer wins " + money(pot) + " with " + handName(h1) + " (you: " + handName(h0) + ")"; }
+    else { award(0, Math.ceil(pot / 2)); award(1, Math.floor(pot / 2)); S.msg = "Split pot – both have " + handName(h0); }
+    S.pot = 0; S.state = "over"; render();
+  }
+  function bounds(p) {
+    const o = 1 - p, cur = curBet();
+    const maxTo = Math.min(S.bets[p] + S.stacks[p], S.bets[o] + S.stacks[o]);
+    const minTo = Math.min(cur + S.minRaise, maxTo);
+    return { cur, maxTo, minTo, toCall: Math.min(S.bets[o] - S.bets[p], S.stacks[p]), canRaise: maxTo > cur && S.stacks[p] > S.bets[o] - S.bets[p] };
+  }
+  function act(p, type, to) {
+    if (S.state !== "hand" || S.turn !== p) return;
+    const o = 1 - p;
+    if (type === "fold") { fold(p); return; }
+    const b = bounds(p);
+    if (type === "call") {
+      S.stacks[p] -= b.toCall; S.bets[p] += b.toCall; if (S.stacks[p] === 0) S.allIn[p] = true; S.acted[p] = true;
+    } else {
+      to = Math.max(b.minTo, Math.min(to, b.maxTo));
+      const add = to - S.bets[p]; S.stacks[p] -= add; S.bets[p] = to; if (S.stacks[p] === 0) S.allIn[p] = true;
+      const size = to - b.cur; if (size >= S.minRaise) S.minRaise = size;
+      S.acted[p] = true; S.acted[o] = false; S.raises++;
+    }
+    proceed(o);
+  }
+
+  /* ---- computer opponent ---- */
+  function cpuAct() {
+    if (S.state !== "hand" || S.turn !== 1) return;
+    const b = bounds(1), pot = potTotal(), eq = equity(S.hole[1], S.board, 260);
+    const round10 = n => Math.max(10, Math.round(n / 10) * 10);
+    const sized = frac => b.cur + Math.max(S.minRaise, round10(frac * (pot + b.toCall)));
+    const bluff = Math.random() < 0.07;
+    if (b.toCall === 0) {
+      if (b.canRaise && S.raises < 3 && (eq > 0.64 || (bluff && eq > 0.3))) act(1, "raise", sized(eq > 0.8 ? 0.8 : 0.5));
+      else act(1, "call");
+    } else {
+      const odds = b.toCall / (pot + b.toCall);
+      if (b.canRaise && S.raises < 3 && eq > 0.78 && Math.random() < 0.8) act(1, "raise", sized(0.75));
+      else if (eq > odds + 0.04 || (bluff && b.toCall <= pot * 0.5)) act(1, "call");
+      else act(1, "fold");
+    }
+  }
+
+  /* ---- drawing ---- */
+  function render() {
+    const hand = (id, cards, hide) => { $(id).innerHTML = cards.length ? cards.map(c => cardHtml(c, hide)).join("") : cardHtml(null, true, 'style="visibility:hidden"'); };
+    hand("pkOpp", S.hole[1], !S.reveal); hand("pkMe", S.hole[0], false);
+    let bo = ""; for (let i = 0; i < 5; i++) bo += S.board[i] ? cardHtml(S.board[i]) : '<div class="pcard empty"></div>';
+    $("pkBoard").innerHTML = bo;
+    $("pkOppStack").textContent = money(S.stacks[1]); $("pkMeStack").textContent = money(S.stacks[0]);
+    $("pkOppD").hidden = S.button !== 1; $("pkMeD").hidden = S.button !== 0;
+    $("pkOppBet").textContent = S.bets[1] ? "Bet " + money(S.bets[1]) : "";
+    $("pkMeBet").textContent = S.bets[0] ? "Bet " + money(S.bets[0]) : "";
+    $("pkPot").textContent = "Pot " + money(potTotal());
+    const m = $("pkMsg");
+    m.textContent = S.msg || (S.state === "hand" ? (S.turn === 1 ? "Computer is thinking…" : S.turn === 0 ? "Your turn" : "") : "");
+    m.className = "msg" + (S.state === "over" ? (/^You win|^Computer folds/.test(S.msg) ? " win" : /^Split/.test(S.msg) ? " push" : " lose") : "");
+    renderBar();
+  }
+  function renderBar() {
+    const bar = $("pkBar");
+    if (S.state === "over") { bar.innerHTML = '<div class="row"><button class="go" data-a="next">Next hand</button></div>'; return; }
+    if (S.state === "matchover") { bar.innerHTML = '<div class="row"><button class="go" data-a="newmatch">New match</button></div>'; return; }
+    if (S.state !== "hand" || S.turn !== 0) { bar.innerHTML = '<div class="row"><button disabled>&nbsp;Waiting&hellip;&nbsp;</button></div>'; return; }
+    const b = bounds(0), pot = potTotal();
+    if (!S.raiseTo) S.raiseTo = b.minTo;
+    S.raiseTo = Math.max(b.minTo, Math.min(S.raiseTo, b.maxTo));
+    const step = Math.max(BB, 10);
+    const pre = frac => Math.max(b.minTo, Math.min(b.maxTo, b.cur + Math.max(S.minRaise, Math.round(frac * (pot + b.toCall) / 10) * 10)));
+    const allin = S.raiseTo >= b.maxTo;
+    let html = '<div class="row"><button class="warnb" data-a="fold">Fold</button><button class="go" data-a="call">' +
+      (b.toCall ? "Call " + money(b.toCall) : "Check") + "</button></div>";
+    if (b.canRaise) {
+      html += '<div class="raisebox"><button data-a="dec">−</button><span class="amt">' + (b.cur ? "Raise to " : "Bet ") + money(S.raiseTo) + "</span><button data-a=\"inc\">+</button>" +
+        '<button data-a="pre" data-to="' + b.minTo + '">Min</button><button data-a="pre" data-to="' + pre(.5) + '">½ Pot</button>' +
+        '<button data-a="pre" data-to="' + pre(1) + '">Pot</button><button data-a="pre" data-to="' + b.maxTo + '">All-in</button>' +
+        '<button class="go" data-a="raise">' + (allin ? "All-in" : b.cur ? "Raise" : "Bet") + "</button></div>";
+    }
+    bar.innerHTML = html;
+  }
+  $("pkBar").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b || !S) return;
+    const a = b.dataset.a;
+    if (a === "next") startHand();
+    else if (a === "newmatch") newMatch();
+    else if (S.state === "hand" && S.turn === 0) {
+      const bd = bounds(0);
+      if (a === "fold") act(0, "fold");
+      else if (a === "call") act(0, "call");
+      else if (a === "raise") act(0, "raise", S.raiseTo);
+      else if (a === "inc") { S.raiseTo = Math.min(bd.maxTo, (S.raiseTo || bd.minTo) + BB); renderBar(); }
+      else if (a === "dec") { S.raiseTo = Math.max(bd.minTo, (S.raiseTo || bd.minTo) - BB); renderBar(); }
+      else if (a === "pre") { S.raiseTo = Number(b.dataset.to); renderBar(); }
+    }
+  });
+  newMatch();
+  return {
+    enter() { render(); },
+    leave() { /* a CPU turn already scheduled simply completes in the background */ },
+    _test: { evalHand, cmp, handName, equity, get S() { return S; } }
+  };
+})();
+
+/* ============================ SOLITAIRE (Klondike) ============================ */
+const Solitaire = (function () {
+  const area = $("solArea");
+  let G, sel = null, hist = [], moves = 0, draw3 = ls("solDraw3", "0") === "1", won = false, lastTap = { t: 0, key: "" }, autoTimer = null, active = false;
+
+  function deal() {
+    clearInterval(autoTimer);
+    const d = newDeck(1).map(c => ({ r: c.r, s: c.s, up: false }));
+    G = { stock: [], waste: [], found: [[], [], [], []], tab: [[], [], [], [], [], [], []] };
+    for (let i = 0; i < 7; i++) for (let j = 0; j <= i; j++) { const c = d.pop(); c.up = j === i; G.tab[i].push(c); }
+    G.stock = d; sel = null; hist = []; moves = 0; won = false;
+    render();
+  }
+  function snapshot() { hist.push(JSON.stringify(G)); if (hist.length > 300) hist.shift(); }
+  function undo() {
+    if (!hist.length) return;
+    clearInterval(autoTimer); G = JSON.parse(hist.pop()); sel = null; won = false; moves = Math.max(0, moves - 1); render();
+  }
+  const top = a => a[a.length - 1];
+  function cardsOf(s) {
+    if (s.pile === "waste") return G.waste.length ? [top(G.waste)] : [];
+    if (s.pile === "found") return G.found[s.i].length ? [top(G.found[s.i])] : [];
+    return G.tab[s.i].slice(s.idx);
+  }
+  function isMovable(s) {
+    if (s.pile === "waste") return G.waste.length > 0;
+    if (s.pile === "found") return G.found[s.i].length > 0;
+    const c = G.tab[s.i][s.idx]; return !!c && c.up;
+  }
+  function canTab(cards, i) {
+    const col = G.tab[i], c = cards[0];
+    if (!col.length) return c.r === 13;
+    const t = top(col);
+    return t.up && isRed(t.s) !== isRed(c.s) && t.r === c.r + 1;
+  }
+  function canFound(cards, j) {
+    if (cards.length !== 1) return false;
+    const c = cards[0], f = G.found[j];
+    if (!f.length) return c.r === 1;
+    const t = top(f); return t.s === c.s && c.r === t.r + 1;
+  }
+  function removeFrom(s) {
+    if (s.pile === "waste") G.waste.pop();
+    else if (s.pile === "found") G.found[s.i].pop();
+    else { G.tab[s.i].splice(s.idx); const t = top(G.tab[s.i]); if (t && !t.up) t.up = true; }
+  }
+  function moveSel(dest) {
+    if (!sel) return false;
+    const cards = cardsOf(sel);
+    if (!cards.length) return false;
+    const ok = dest.pile === "tab" ? canTab(cards, dest.i) : dest.pile === "found" ? canFound(cards, dest.i) : false;
+    if (!ok) return false;
+    if (sel.pile === dest.pile && sel.i === dest.i) return false;
+    snapshot(); removeFrom(sel);
+    (dest.pile === "tab" ? G.tab[dest.i] : G.found[dest.i]).push(...cards);
+    moves++; sel = null; render(); checkWin(); return true;
+  }
+  function autoFound(s) {
+    const cards = cardsOf(s);
+    if (cards.length !== 1) return false;
+    for (let j = 0; j < 4; j++) if (canFound(cards, j)) { sel = s; return moveSel({ pile: "found", i: j }); }
+    return false;
+  }
+  function drawStock() {
+    snapshot();
+    if (G.stock.length) {
+      for (let k = 0; k < (draw3 ? 3 : 1) && G.stock.length; k++) { const c = G.stock.pop(); c.up = true; G.waste.push(c); }
+    } else if (G.waste.length) {
+      G.stock = G.waste.reverse(); G.stock.forEach(c => c.up = false); G.waste = [];
+    } else { hist.pop(); return; }
+    moves++; sel = null; render();
+  }
+  function checkWin() {
+    if (G.found.every(f => f.length === 13)) { won = true; clearInterval(autoTimer); render(); }
+  }
+  function autoFinish() {
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => {
+      const srcs = [{ pile: "waste", i: 0, idx: 0 }];
+      for (let i = 0; i < 7; i++) if (G.tab[i].length) srcs.push({ pile: "tab", i, idx: G.tab[i].length - 1 });
+      for (const s of srcs) if (isMovable(s) && autoFound(s)) return;
+      clearInterval(autoTimer);
+    }, 110);
+  }
+
+  /* ---- layout + drawing ---- */
+  function render() {
+    const W = area.clientWidth, Ht = area.clientHeight;
+    $("solMoves").textContent = moves;
+    document.querySelectorAll("#solDrawRow button").forEach(b => b.classList.toggle("on", (b.dataset.draw === "3") === draw3));
+    $("solUndo").disabled = !hist.length;
+    if (!W || !Ht || !G) return;
+    const gap = Math.max(6, W * 0.012);
+    const cw = Math.max(40, Math.min((W - gap * 6) / 7, Ht / (1.4 * 3.9))), ch = cw * 1.4;
+    const x0 = (W - (7 * cw + 6 * gap)) / 2, colX = i => x0 + i * (cw + gap), y0 = 6, tabY = y0 + ch + gap * 1.8;
+    const sty = (x, y, z) => `left:${x}px;top:${y}px;width:${cw}px;height:${ch}px;--cw:${cw}px;` + (z ? `z-index:${z};` : "");
+    const selKey = c => sel && ((sel.pile === "tab" && c.pile === "tab" && sel.i === c.i && c.idx >= sel.idx) ||
+      (sel.pile !== "tab" && sel.pile === c.pile && (sel.i || 0) === (c.i || 0)));
+    let h = "";
+    // stock
+    h += G.stock.length ? cardHtml(null, true, 'data-pile="stock"', sty(colX(0), y0)) :
+      `<div class="slot" data-pile="stock" style="${sty(colX(0), y0)}">↻</div>`;
+    // waste (fan the last three when drawing three)
+    const wShow = draw3 ? G.waste.slice(-3) : G.waste.slice(-1), wBase = G.waste.length - wShow.length;
+    if (!G.waste.length) h += `<div class="slot" data-pile="waste" style="${sty(colX(1), y0)}"></div>`;
+    wShow.forEach((c, k) => {
+      const on = wBase + k === G.waste.length - 1 && selKey({ pile: "waste" });
+      h += cardHtml(c, false, 'data-pile="waste" data-i="0" data-idx="0"', sty(colX(1) + k * cw * 0.26, y0, k + 1))
+        .replace('class="pcard', on ? 'class="pcard sel' : 'class="pcard');
+    });
+    // foundations
+    for (let j = 0; j < 4; j++) {
+      const f = G.found[j], x = colX(3 + j);
+      if (!f.length) h += `<div class="slot" data-pile="found" data-i="${j}" style="${sty(x, y0)}">A</div>`;
+      else {
+        if (f.length > 1) h += cardHtml(f[f.length - 2], false, `data-pile="found" data-i="${j}"`, sty(x, y0, 1));
+        const on = selKey({ pile: "found", i: j });
+        h += cardHtml(top(f), false, `data-pile="found" data-i="${j}"`, sty(x, y0, 2)).replace('class="pcard', on ? 'class="pcard sel' : 'class="pcard');
+      }
+    }
+    // tableau
+    const avail = Ht - tabY - 8;
+    for (let i = 0; i < 7; i++) {
+      const col = G.tab[i], x = colX(i);
+      if (!col.length) { h += `<div class="slot" data-pile="tab" data-i="${i}" style="${sty(x, tabY)}">K</div>`; continue; }
+      const dDown = ch * 0.17, dUp = ch * 0.31;
+      let natural = 0; col.forEach((c, k) => { if (k < col.length - 1) natural += c.up ? dUp : dDown; });
+      const f = natural + ch > avail ? Math.max(.3, (avail - ch) / natural) : 1;
+      let y = tabY;
+      col.forEach((c, k) => {
+        const on = selKey({ pile: "tab", i, idx: k });
+        h += cardHtml(c, !c.up, `data-pile="tab" data-i="${i}" data-idx="${k}"`, sty(x, y, k + 1)).replace('class="pcard', on ? 'class="pcard sel' : 'class="pcard');
+        y += (c.up ? dUp : dDown) * f;
+      });
+    }
+    if (won) h += '<div id="solWin"><div>You won! 🎉</div><button id="solWinNew" style="flex:none;min-width:160px">New deal</button></div>';
+    area.innerHTML = h;
+  }
+
+  area.addEventListener("click", e => {
+    if (e.target.id === "solWinNew") { deal(); return; }
+    if (won) return;
+    const el = e.target.closest("[data-pile]");
+    if (!el) { sel = null; render(); return; }
+    const pile = el.dataset.pile, i = Number(el.dataset.i || 0), idx = el.dataset.idx === undefined ? 0 : Number(el.dataset.idx);
+    if (pile === "stock") { drawStock(); return; }
+    const now = Date.now(), key = pile + ":" + i + ":" + idx, dbl = lastTap.key === key && now - lastTap.t < 380;
+    lastTap = { t: now, key };
+    const s = { pile, i, idx };
+    if (dbl && isMovable(s) && autoFound(s)) return;
+    if (sel && (pile === "tab" || pile === "found") && moveSel({ pile, i })) return;
+    if (isMovable(s)) { sel = (sel && sel.pile === pile && sel.i === i && sel.idx === idx) ? null : s; } else sel = null;
+    render();
+  });
+  bindRow("solDrawRow", b => { draw3 = b.dataset.draw === "3"; lsSet("solDraw3", draw3 ? "1" : "0"); deal(); });
+  $("solUndo").addEventListener("click", undo);
+  $("solAuto").addEventListener("click", autoFinish);
+  $("solNew").addEventListener("click", deal);
+  window.addEventListener("resize", () => { if (active) render(); });
+  deal();
+  return { enter() { active = true; render(); }, leave() { active = false; clearInterval(autoTimer); }, _test: { get G() { return G; } } };
+})();
+
+/* ============================ PING PONG ============================ */
+const Pong = (function () {
+  const wrap = $("pgWrap"), cv = $("pgCanvas"), ctx = cv.getContext("2d");
+  const W = 800, H = 480, PH = 92, PW = 12, PX = 26, R = 8, TARGET = 7;
+  const cfg = { mode: ls("pongMode", "1p"), lvl: Number(ls("pongLvl", 2)) };
+  let padL, padR, ball, score, state, serveAt, serveDir, raf = null, last = 0, active = false, aiErr = 0, winner = "";
+  const target = [H / 2, H / 2];          // where each paddle wants to be (touch / mouse)
+  const keys = {};
+  const pointers = new Map();             // pointerId -> paddle index (0 left, 1 right)
+
+  function newGame() {
+    score = [0, 0]; padL = H / 2; padR = H / 2; target[0] = target[1] = H / 2; winner = "";
+    serveDir = Math.random() < .5 ? 1 : -1; state = "ready"; ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, sp: 0 };
+    ui(); draw();
+  }
+  function ui() {
+    $("pgSL").textContent = score[0]; $("pgSR").textContent = score[1];
+    $("pgNameL").textContent = cfg.mode === "2p" ? "Left" : "You";
+    $("pgNameR").textContent = cfg.mode === "2p" ? "Right" : "Computer";
+    $("pgMsg").textContent = state === "ready" ? "Tap the table to serve" : state === "over" ? winner + " wins!  Tap to play again" : "First to " + TARGET;
+    $("pgLvlBox").hidden = cfg.mode === "2p";
+    $("pgHelp").textContent = cfg.mode === "2p" ? "Left player drags on the left half, right player on the right half." : "Drag anywhere on the table to move your paddle (or use W / S).";
+    document.querySelectorAll("#pgModeRow button").forEach(b => b.classList.toggle("on", b.dataset.mode === cfg.mode));
+    document.querySelectorAll("#pgLvlRow button").forEach(b => b.classList.toggle("on", Number(b.dataset.lvl) === cfg.lvl));
+  }
+  function serve() {
+    const base = 6.2 * (cfg.mode === "1p" && cfg.lvl === 1 ? .85 : 1);
+    const ang = (Math.random() - .5) * 0.7;
+    ball = { x: W / 2, y: H / 2, vx: Math.cos(ang) * base * serveDir, vy: Math.sin(ang) * base, sp: base };
+    aiErr = (Math.random() - .5) * [0, 70, 38, 14][cfg.lvl];
+    state = "play"; ui();
+  }
+  function point(who) {
+    score[who]++;
+    ball.vx = ball.vy = 0;
+    if (score[who] >= TARGET) { state = "over"; winner = cfg.mode === "2p" ? (who === 0 ? "Left player" : "Right player") : (who === 0 ? "You" : "Computer"); }
+    else { state = "wait"; serveDir = who === 0 ? -1 : 1; serveAt = performance.now() + 900; }
+    ui();
+  }
+  function step(dt) {
+    // paddles
+    const kv = 9 * dt;
+    if (keys.w) target[0] = Math.max(PH / 2, target[0] - kv);
+    if (keys.s) target[0] = Math.min(H - PH / 2, target[0] + kv);
+    if (cfg.mode === "2p") {
+      if (keys.ArrowUp) target[1] = Math.max(PH / 2, target[1] - kv);
+      if (keys.ArrowDown) target[1] = Math.min(H - PH / 2, target[1] + kv);
+    } else {
+      if (keys.ArrowUp) target[0] = Math.max(PH / 2, target[0] - kv);
+      if (keys.ArrowDown) target[0] = Math.min(H - PH / 2, target[0] + kv);
+    }
+    padL = target[0];
+    if (cfg.mode === "2p") padR = target[1];
+    else {
+      const sp = [0, 3.4, 5, 6.6][cfg.lvl] * dt;
+      const want = (ball.vx > 0 && state === "play") ? ball.y + aiErr : H / 2;
+      const d = want - padR;
+      if (Math.abs(d) > 6) padR += Math.sign(d) * Math.min(Math.abs(d), sp);
+      padR = Math.max(PH / 2, Math.min(H - PH / 2, padR));
+    }
+    if (state === "wait" && performance.now() >= serveAt) serve();
+    if (state !== "play") return;
+    ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+    if (ball.y < R) { ball.y = R; ball.vy = Math.abs(ball.vy); }
+    if (ball.y > H - R) { ball.y = H - R; ball.vy = -Math.abs(ball.vy); }
+    // left paddle
+    if (ball.vx < 0 && ball.x - R <= PX + PW && ball.x + R >= PX && Math.abs(ball.y - padL) <= PH / 2 + R) hit(padL, 1);
+    else if (ball.vx > 0 && ball.x + R >= W - PX - PW && ball.x - R <= W - PX && Math.abs(ball.y - padR) <= PH / 2 + R) hit(padR, -1);
+    if (ball.x < -R * 2) point(1);
+    else if (ball.x > W + R * 2) point(0);
+  }
+  function hit(py, dirX) {
+    const off = Math.max(-1, Math.min(1, (ball.y - py) / (PH / 2)));
+    const ang = off * (Math.PI / 3.2);
+    ball.sp = Math.min(15, ball.sp * 1.055);
+    ball.vx = Math.cos(ang) * ball.sp * dirX; ball.vy = Math.sin(ang) * ball.sp;
+    ball.x = dirX === 1 ? PX + PW + R : W - PX - PW - R;
+  }
+  function size() {
+    const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    draw();
+  }
+  function draw() {
+    const k = cv.width / W;
+    if (!cv.width) return;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#14304a"); g.addColorStop(1, "#0e2236");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 3; ctx.strokeRect(6, 6, W - 12, H - 12);
+    ctx.setLineDash([14, 12]); ctx.beginPath(); ctx.moveTo(W / 2, 8); ctx.lineTo(W / 2, H - 8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.font = "700 90px Segoe UI, system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(score[0], W / 2 - 90, 100); ctx.fillText(score[1], W / 2 + 90, 100);
+    ctx.fillStyle = "#e8edf2";
+    ctx.fillRect(PX, padL - PH / 2, PW, PH); ctx.fillRect(W - PX - PW, padR - PH / 2, PW, PH);
+    ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.arc(ball.x, ball.y, R, 0, 7); ctx.fill();
+    if (state === "ready" || state === "over") {
+      ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#fff"; ctx.font = "700 44px Segoe UI, system-ui, sans-serif";
+      ctx.fillText(state === "over" ? winner + " wins!" : "Ping Pong", W / 2, H / 2 - 6);
+      ctx.font = "500 24px Segoe UI, system-ui, sans-serif"; ctx.fillStyle = "#cfd8e0";
+      ctx.fillText(state === "over" ? "Tap to play again" : "Tap to serve", W / 2, H / 2 + 34);
+    }
+  }
+  function loop(ts) {
+    raf = requestAnimationFrame(loop);
+    const dt = Math.min(2.5, (ts - last) / 16.667 || 1); last = ts;
+    step(dt); draw();
+  }
+
+  function yFromEvent(e) { const r = wrap.getBoundingClientRect(); return (e.clientY - r.top) / r.height * H; }
+  function setTarget(i, y) { target[i] = Math.max(PH / 2, Math.min(H - PH / 2, y)); }
+  wrap.addEventListener("pointerdown", e => {
+    const r = wrap.getBoundingClientRect(), side = cfg.mode === "2p" ? ((e.clientX - r.left) < r.width / 2 ? 0 : 1) : 0;
+    pointers.set(e.pointerId, side);
+    try { wrap.setPointerCapture(e.pointerId); } catch (x) {}
+    setTarget(side, yFromEvent(e));
+    if (state === "ready") serve();
+    else if (state === "over") newGame();
+  });
+  wrap.addEventListener("pointermove", e => { if (pointers.has(e.pointerId) || e.pointerType === "mouse") setTarget(pointers.has(e.pointerId) ? pointers.get(e.pointerId) : 0, yFromEvent(e)); });
+  const up = e => pointers.delete(e.pointerId);
+  wrap.addEventListener("pointerup", up); wrap.addEventListener("pointercancel", up);
+  document.addEventListener("keydown", e => {
+    if (!active) return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (["w", "s", "ArrowUp", "ArrowDown"].includes(k)) { keys[k] = true; e.preventDefault(); if (state === "ready") serve(); }
+  });
+  document.addEventListener("keyup", e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
+  bindRow("pgModeRow", b => { cfg.mode = b.dataset.mode; lsSet("pongMode", cfg.mode); newGame(); });
+  bindRow("pgLvlRow", b => { cfg.lvl = Number(b.dataset.lvl); lsSet("pongLvl", cfg.lvl); ui(); });
+  $("pgNew").addEventListener("click", newGame);
+  window.addEventListener("resize", () => { if (active) size(); });
+  newGame();
+  return {
+    enter() { active = true; size(); last = performance.now(); if (!raf) raf = requestAnimationFrame(loop); },
+    leave() { active = false; if (raf) { cancelAnimationFrame(raf); raf = null; } if (state === "play") { state = "ready"; ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, sp: 0 }; ui(); } }
+  };
+})();
+
+/* ============================ HUB / TABS ============================ */
+const GAMES = [
+  { id: "chess", name: "♚ Chess", mod: Chess },
+  { id: "snake", name: "🐍 Snake", mod: Snake },
+  { id: "bj", name: "♠ 21", mod: Blackjack },
+  { id: "poker", name: "♥ Poker", mod: Poker },
+  { id: "sol", name: "🃏 Solitaire", mod: Solitaire },
+  { id: "pong", name: "🏓 Ping Pong", mod: Pong }
+];
+let current = null;
+function showGame(id) {
+  if (!GAMES.some(g => g.id === id)) id = "chess";
+  if (current === id) return;
+  const prev = GAMES.find(g => g.id === current);
+  if (prev) { prev.mod.leave(); $("g-" + prev.id).hidden = true; }
+  current = id;
+  $("g-" + id).hidden = false;
+  document.querySelectorAll("#tabs .tab").forEach(b => b.classList.toggle("on", b.dataset.g === id));
+  lsSet("gamesTab", id);
+  GAMES.find(g => g.id === id).mod.enter();
+}
+$("tabs").innerHTML = GAMES.map(g => `<button class="tab" data-g="${g.id}">${g.name}</button>`).join("");
+$("tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) showGame(b.dataset.g); });
+showGame(new URLSearchParams(location.search).get("g") || ls("gamesTab", "chess"));
+
+</script>
+</body>
+</html>
