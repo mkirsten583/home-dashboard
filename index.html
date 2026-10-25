@@ -1330,8 +1330,11 @@ function renderHaGrid(containerId, entities, emptyMsg){
         return txt;
       });
       const anyErr = shown.some(sub => haStates[sub.key] && haStates[sub.key].error);
+      // A hidden status sub-item (e.g. KH Guardian state) is shown in brackets after the title.
+      const stSub = item.items.find(sub => sub.hidden), stObj = stSub && haStates[stSub.key];
+      const stTxt = stObj && !stObj.error && stObj.state != null && !['unknown', 'unavailable', ''].includes(String(stObj.state).trim().toLowerCase()) ? String(stObj.state).trim() : '';
       return `<div class="aquacell${anyErr ? ' err' : ''}">
-        <span class="alabel">${esc(item.label)}</span>
+        <span class="alabel">${esc(item.label)}${stTxt ? ' (' + esc(stTxt) + ')' : ''}</span>
         <span class="aval">${parts.join(esc(item.separator || ' / '))}</span>
       </div>`;
     }
