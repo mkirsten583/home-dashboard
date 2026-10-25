@@ -109,16 +109,6 @@
      down to a smaller, consistent size instead of stretching to fill the tile —
      aspect-ratio keeps every button's shape identical, just smaller. */
   .minigrid{display:grid;grid-template-columns:repeat(2, minmax(0,240px));grid-auto-rows:auto;gap:9px 12px;width:100%;flex:1;align-content:space-evenly;justify-content:center;overflow:auto;}
-  .modalbox.camwin{max-width:min(1500px,96vw);width:96vw;padding:18px;max-height:96vh;overflow:hidden;}
-  .camhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-  #camClose{font-size:18px;padding:10px 26px;}
-  #camGrid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;height:calc(88vh - 70px);}
-  #camGrid.one{grid-template-columns:1fr;grid-template-rows:1fr;}
-  .camtile{position:relative;background:#05070a;border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;min-height:0;}
-  #camGrid.one .camtile:not(.big){display:none;}
-  .camtile img{width:100%;height:100%;object-fit:contain;display:block;}
-  .camtile .camname{position:absolute;left:10px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:14px;font-weight:600;padding:3px 9px;border-radius:8px;}
-  .camtile .cammsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px;color:var(--text-dim);font-size:14px;}
   .modalbox.workbox{max-width:min(1120px,94vw);padding:32px;max-height:92vh;}
   #workGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:20px 0;overflow:visible;flex:none;}
   #workGrid .mblabel{font-size:22px;}
@@ -474,13 +464,6 @@
   </div>
 </div>
 
-<div class="modal" id="camModal">
-  <div class="modalbox camwin">
-    <div class="camhead"><h2 style="margin:0;font-size:24px;">Reolink Cameras</h2><button id="camClose">Close</button></div>
-    <div id="camGrid"></div>
-  </div>
-</div>
-
 <div class="modal" id="linkEditModal">
   <div class="modalbox pinbox" style="max-width:380px;">
     <h2 id="linkEditTitle">Set link</h2>
@@ -575,7 +558,7 @@ const TOOLS = [
   // Home Tools panel buttons (not on the main grid).
   { key: 'inventory', label: 'Inventory', url: 'https://mkirsten583.github.io/inventory-locator/', row: 'home' },
   { key: 'homespare', label: 'Home Spare', url: '', row: 'home', blank: true },
-  { key: 'reolink',   label: 'Reolink Cameras', special: true, cams: true, row: 'home' },
+  { key: 'homespare2', label: 'Home Spare 2', url: '', row: 'home', blank: true },
   { key: 'tool3',     label: 'Home Assistant', url: 'https://a5pishfcqtx68d2job89nxfzp34dv3d0.ui.nabu.casa/dashboard-main/0', external: true },
   { key: 'work',      label: 'Work',      special: true, panel: 'work' },
   { key: 'streamcharts', label: 'Streaming Charts', url: '', row: 'stream' },
@@ -1192,7 +1175,7 @@ function applyActionsBadge(){
   });
 }
 const TOOL_PANELS = {
-  home: { title: 'Home Tools', keys: ['inventory', 'homespare', 'reolink'] },
+  home: { title: 'Home Tools', keys: ['inventory', 'homespare', 'homespare2'] },
   work: { title: 'Work', keys: ['cmsh', 'projects', 'actions'] },
   stream: { title: 'Streaming & Media', keys: ['streamcharts', 'youtube', 'spotify', 'netflix', 'prime', 'plex'] },
   aqua: { title: 'Aquarium Tools', keys: ['reeftracker', 'aquatool2', 'aquatool3'] },
@@ -1203,7 +1186,7 @@ function openToolPanel(name){
   const list = pn.keys.map(k => TOOLS.find(t => t.key === k)).filter(Boolean);
   const g = $('workGrid');
   g.innerHTML = list.map(c => {
-    const usable = !!(effectiveUrl(c) || c.launch || c.cams);
+    const usable = !!(effectiveUrl(c) || c.launch);
     const ic = icons[c.key];
     const bg = ic ? ` style="background-image:url('${ic.url.replace(/'/g, '%27')}')"` : '';
     return `<button class="minibtn${ic ? ' has-icon' : ''}" data-key="${c.key}" ${usable ? '' : 'disabled'}${bg}>
@@ -1213,8 +1196,7 @@ function openToolPanel(name){
   g.querySelectorAll('.minibtn:not(:disabled)').forEach(b => b.addEventListener('click', () => {
     const item = TOOLS.find(t => t.key === b.dataset.key);
     $('workModal').classList.remove('open');
-    if(item.cams) openCamPanel();
-    else if(item.launch) launchPcApp(item);
+    if(item.launch) launchPcApp(item);
     else if(item.popup) openBareWindow(effectiveUrl(item));
     else proceedOpen(item);
   }));
@@ -1223,52 +1205,6 @@ function openToolPanel(name){
 }
 $('workClose').addEventListener('click', () => $('workModal').classList.remove('open'));
 $('workModal').addEventListener('click', e => { if(e.target.id === 'workModal') $('workModal').classList.remove('open'); });
-// Reolink camera wall: four live pictures fetched through the PC helper (cors_server.py), refreshed about once a second.
-let camRun = 0;
-async function openCamPanel(){
-  const run = ++camRun;
-  const grid = $('camGrid');
-  grid.className = '';
-  grid.innerHTML = [1,2,3,4].map(n => `<div class="camtile" data-n="${n}"><span class="camname">Camera ${n}</span><div class="cammsg">Connecting…</div><img alt="" hidden></div>`).join('');
-  $('camModal').classList.add('open');
-  let names = [];
-  try{
-    const r = await fetch('http://localhost:8787/cams', { cache: 'no-store' });
-    const j = await r.json();
-    names = (j.cameras || []).map(c => c.name);
-  }catch(e){
-    grid.querySelectorAll('.cammsg').forEach(m => m.textContent = 'Can’t reach the PC helper. Make sure the updated cors_server.py is running.');
-    return;
-  }
-  grid.querySelectorAll('.camtile').forEach((t, i) => {
-    const msg = t.querySelector('.cammsg'), img = t.querySelector('img'), label = t.querySelector('.camname');
-    if(!names[i]){ label.hidden = true; msg.textContent = 'Camera ' + (i + 1) + ' not set up (see cameras.json)'; return; }
-    label.textContent = names[i];
-    const tick = async () => {
-      if(run !== camRun) return;
-      try{
-        const r = await fetch('http://localhost:8787/cam?n=' + (i + 1) + '&t=' + Date.now(), { cache: 'no-store' });
-        if(!r.ok){ const j = await r.json().catch(() => ({})); throw new Error(j.error || r.status); }
-        const url = URL.createObjectURL(await r.blob());
-        const old = img.src; img.src = url; img.hidden = false; msg.hidden = true;
-        if(old && old.startsWith('blob:')) URL.revokeObjectURL(old);
-      }catch(e){
-        if(img.hidden){ msg.hidden = false; msg.textContent = 'No picture: ' + e.message; }
-      }
-      if(run === camRun) setTimeout(tick, 1000);
-    };
-    tick();
-  });
-}
-function closeCamPanel(){ camRun++; $('camModal').classList.remove('open'); }
-$('camClose').addEventListener('click', closeCamPanel);
-$('camGrid').addEventListener('click', e => {
-  const t = e.target.closest('.camtile'); if(!t) return;
-  const grid = $('camGrid');
-  const big = t.classList.toggle('big');
-  grid.querySelectorAll('.camtile').forEach(x => { if(x !== t) x.classList.remove('big'); });
-  grid.classList.toggle('one', big);
-});
 async function launchPcApp(item){
   try{
     const r = await fetch('http://localhost:8787/launch?app=' + encodeURIComponent(item.launch), { cache: 'no-store' });
@@ -1594,8 +1530,8 @@ function renderLinkSettings(){
   if(!account){ g.innerHTML = ''; return; }
   const all = CALENDARS.concat(TOOLS);
   g.innerHTML = all.map(c => {
-    if(c.launch || c.panel || c.cams) return `<div class="iconrow">
-      <div class="iconname">${esc(c.label)}<br><span style="color:var(--text-faint);font-size:11.5px;font-weight:400;">${c.cams ? 'Shows your Reolink camera feeds — set up in cameras.json on the PC' : c.panel ? 'Opens a pop-up — set the links for its buttons below' : 'Opens the app on this PC — no link needed'}</span></div>
+    if(c.launch || c.panel) return `<div class="iconrow">
+      <div class="iconname">${esc(c.label)}<br><span style="color:var(--text-faint);font-size:11.5px;font-weight:400;">${c.panel ? 'Opens a pop-up — set the links for its buttons below' : 'Opens the app on this PC — no link needed'}</span></div>
     </div>`;
     const url = effectiveUrl(c);
     return `<div class="iconrow">
