@@ -161,7 +161,7 @@
   .dose.low .dosefill{background:linear-gradient(180deg,#ff6b5e,#d02020);box-shadow:0 -2px 8px rgba(255,90,80,.7);}
   .dosepct{position:absolute;top:18%;left:0;right:0;text-align:center;font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:1;}
   .doselbl{font-size:10px;font-weight:600;color:var(--text-dim);white-space:nowrap;}
-  .aval.okgood{color:#3ecf6a;}
+  .aval.okgood,.aval .okgood{color:#3ecf6a;}
   .aquasubrow{display:flex;width:100%;justify-content:space-around;gap:4px;}
   .aquasub{display:flex;flex-direction:column;align-items:center;gap:1px;}
   .asublabel{font-size:8.5px;font-weight:600;color:var(--text-dim);}
@@ -386,7 +386,6 @@
     <div class="tile group ha-zone ha-aqua">
       <div class="grouphead">
         <span class="lbl">Aquarium</span>
-        <button class="aqua-lock" id="aquaLockBtn" title="Unlock aquarium controls">🔒</button>
       </div>
       <div class="aquagrid" id="aquaGrid"></div>
     </div>
@@ -638,8 +637,10 @@ const AQUARIUM_ENTITIES = [
       // Fetched but not shown: if its state isn't STANDBY, the KH value turns red.
       { key: 'khg_state',  entity: 'input_text.kh_guardian_state', hidden: true },
     ] },
-  { key: 'sump_variance', label: 'Sump Variance', entity: 'sensor.ma_sump_level_variance', type: 'stat' },
-  { key: 'sump_state',    label: 'Sump Level',    entity: 'sensor.ma_sump_level_state',    type: 'okstat' },
+  { key: 'sump', label: 'Sump Level', type: 'combo', separator: ' / ', items: [
+      { key: 'sump_variance', entity: 'sensor.ma_sump_level_variance' },
+      { key: 'sump_state',    entity: 'sensor.ma_sump_level_state', okColor: true },
+    ] },
   { key: 'rodi_level', label: 'RODI Level', entity: 'input_text.cade_rodi_level_description', type: 'stat' },
   { key: 'dosing', label: 'Dosing Containers', type: 'containers', items: [
       { key: 'dose_ca',   label: 'Calcium',     entity: 'sensor.calcium_percentage' },
@@ -1355,6 +1356,10 @@ function renderHaGrid(containerId, entities, emptyMsg){
       const shown = item.items.filter(sub => !sub.hidden);
       const parts = shown.map(sub => {
         const txt = esc(fmtHaValue(sub, haStates[sub.key]).text);
+        if(sub.okColor){
+          const st = haStates[sub.key], raw = st && !st.error && st.state != null ? String(st.state).trim().toUpperCase() : '';
+          if(raw && raw !== 'UNKNOWN' && raw !== 'UNAVAILABLE') return `<span class="${raw === 'OK' ? 'okgood' : 'khbad'}">${txt}</span>`;
+        }
         if(sub.redUnlessState){
           const st = haStates[sub.redUnlessState];
           const cur = st && !st.error && st.state != null ? String(st.state).trim().toUpperCase() : '';
@@ -1975,7 +1980,6 @@ function openSettingsModal(){
 }
 function closeSettingsModal(){ $('settingsModal').classList.remove('open'); }
 $('settingsBtn').addEventListener('click', openSettingsModal);
-$('aquaLockBtn').addEventListener('click', e => { e.stopPropagation(); toggleAquaLock(); });
 
 /* ---------------- Rain radar popup (RainViewer widget, centred on Kedron) ---------------- */
 // zoom 8 ≈ roughly the ~128km-around-Kedron view; nudge the third loc number to zoom in/out.
