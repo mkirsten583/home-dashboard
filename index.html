@@ -577,6 +577,7 @@ const TOOLS = [
   { key: 'cmsh',      label: 'CMSH Navigator', url: '', row: 'work' },
   { key: 'projects',  label: 'Project Manager', url: '', row: 'work' },
   { key: 'actions',   label: 'Actions',   url: 'https://mkirsten583.github.io/action-tracker/', row: 'work' },
+  { key: 'workspare', label: 'Work Spare', url: '', row: 'work', blank: true },
   // Aquarium panel
   { key: 'reeftracker', label: 'Reef Tracker', url: 'https://mkirsten583.github.io/reef-tracker/', row: 'aqua' },
   { key: 'aquatool2', label: 'Reef Livestock', url: 'https://mkirsten583.github.io/reef-livestock/', row: 'aqua' },
@@ -1202,7 +1203,7 @@ function applyActionsBadge(){
 }
 const TOOL_PANELS = {
   home: { title: 'Home Tools', keys: ['inventory', 'tool3', 'homespare'] },
-  work: { title: 'Work', keys: ['cmsh', 'projects', 'actions'] },
+  work: { title: 'Work', keys: ['cmsh', 'projects', 'actions', 'workspare'] },
   stream: { title: 'Streaming & Media', keys: ['streamcharts', 'youtube', 'spotify', 'netflix', 'prime', 'plex'] },
   aqua: { title: 'Aquarium Tools', keys: ['reeftracker', 'aquatool2', 'aquatool3'] },
 };
