@@ -573,11 +573,12 @@ const TOOLS = [
   { key: 'inventory', label: 'Inventory', url: 'https://mkirsten583.github.io/inventory-locator/', row: 'home' },
   { key: 'tool3',     label: 'Home Assistant', url: 'https://a5pishfcqtx68d2job89nxfzp34dv3d0.ui.nabu.casa/dashboard-main/0', external: true, row: 'home' },
   { key: 'homespare', label: 'Travel Tool', url: 'https://mkirsten583.github.io/travel-manager/', row: 'home' },
+  { key: 'exercise', label: 'Exercise Tracker', url: 'https://mkirsten583.github.io/exercise-tool/', row: 'home' },
   // Work panel
   { key: 'cmsh',      label: 'CMSH Navigator', url: '', row: 'work' },
   { key: 'projects',  label: 'Project Manager', url: '', row: 'work' },
   { key: 'actions',   label: 'Actions',   url: 'https://mkirsten583.github.io/action-tracker/', row: 'work' },
-  { key: 'workspare', label: 'Work Spare', url: '', row: 'work', blank: true },
+  { key: 'workspare', label: 'Capital Projects', url: '', row: 'work' },
   // Aquarium panel
   { key: 'reeftracker', label: 'Reef Tracker', url: 'https://mkirsten583.github.io/reef-tracker/', row: 'aqua' },
   { key: 'aquatool2', label: 'Reef Livestock', url: 'https://mkirsten583.github.io/reef-livestock/', row: 'aqua' },
@@ -1202,7 +1203,7 @@ function applyActionsBadge(){
   });
 }
 const TOOL_PANELS = {
-  home: { title: 'Home Tools', keys: ['inventory', 'tool3', 'homespare'] },
+  home: { title: 'Home Tools', keys: ['inventory', 'tool3', 'homespare', 'exercise'] },
   work: { title: 'Work', keys: ['cmsh', 'projects', 'actions', 'workspare'] },
   stream: { title: 'Streaming & Media', keys: ['streamcharts', 'youtube', 'spotify', 'netflix', 'prime', 'plex'] },
   aqua: { title: 'Aquarium Tools', keys: ['reeftracker', 'aquatool2', 'aquatool3'] },
